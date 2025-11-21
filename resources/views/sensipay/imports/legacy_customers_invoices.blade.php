@@ -1,6 +1,6 @@
-    @extends('layouts.app')
+ <x-app-layout>
 
-    @section('content')
+   
     <div class="max-w-3xl mx-auto mt-8 space-y-4">
         <h1 class="text-2xl font-bold">Import Customer + Invoice Lama</h1>
         <p class="text-sm text-gray-600">
@@ -44,4 +44,5 @@ Bunda B; bunda.b@example.com; Sinta; JET REGULER 7 SMP; 3000000; 3000000; paid; 
             </button>
         </form>
     </div>
-    @endsection
+ 
+</x-app-layout>

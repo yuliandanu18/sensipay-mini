@@ -8,6 +8,7 @@ use App\Http\Controllers\Sensipay\ParentDashboardController;
 use App\Http\Controllers\Sensipay\ReminderController;
 use App\Http\Controllers\Sensipay\InvoiceImportController;
 use App\Http\Controllers\Sensipay\LegacyCustomerInvoiceImportController;
+use App\Http\Controllers\Sensipay\LegacyInstallmentImportController;
 
 Route::prefix('sensipay')
     ->as('sensipay.')
@@ -59,6 +60,12 @@ Route::get('/students/{student}/finance', [StudentFinanceController::class, 'sho
 
         Route::post('legacy-import/process', [LegacyCustomerInvoiceImportController::class, 'process'])
             ->name('legacy-import.process');
+             Route::get('legacy-installments/import', [LegacyInstallmentImportController::class, 'showForm'])
+            ->name('legacy-installments.import.form');
+
+        Route::post('legacy-installments/process', [LegacyInstallmentImportController::class, 'process'])
+            ->name('legacy-installments.import.process');
+            
     });
 
 
