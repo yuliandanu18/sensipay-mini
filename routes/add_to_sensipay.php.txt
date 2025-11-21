@@ -1,0 +1,7 @@
+
+Tambahkan ke routes/sensipay.php:
+
+use App\Http\Controllers\Sensipay\ReminderController;
+
+Route::get('sensipay/reminders', [ReminderController::class,'index'])
+    ->name('sensipay.reminders.index');

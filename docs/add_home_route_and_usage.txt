@@ -1,0 +1,12 @@
+
+Tambahkan ke routes/web.php:
+
+    use App\Http\Controllers\RoleRedirectController;
+
+    Route::get('/home', RoleRedirectController::class)
+        ->middleware('auth')
+        ->name('home');
+
+Pastikan di config/app.php provider berikut terdaftar:
+
+    App\Providers\RouteServiceProvider::class,

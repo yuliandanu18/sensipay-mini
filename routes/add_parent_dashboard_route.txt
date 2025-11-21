@@ -1,0 +1,7 @@
+
+Tambahkan ke routes/sensipay.php:
+
+use App\Http\Controllers\Sensipay\ParentDashboardController;
+
+Route::get('sensipay/parent/dashboard', [ParentDashboardController::class, 'index'])
+    ->name('sensipay.parent.dashboard');
