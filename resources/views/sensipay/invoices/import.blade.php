@@ -1,4 +1,4 @@
-@extends('layouts.app') {{-- atau layout yang kamu pakai --}}
+@extends('layouts.app')
 
 @section('content')
 <div class="max-w-2xl mx-auto mt-8">

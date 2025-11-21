@@ -32,12 +32,8 @@ class InvoiceImportController extends Controller
 
         $file = $request->file('file');
 
-        // Sederhana: kalau CSV → pakai fgetcsv; kalau XLS/XLSX,
-        // aku anggap kamu pakai library Maatwebsite\Excel.
-        // Di sini aku tulis versi CSV generic, kamu bisa ganti sesuai impor lamamu.
-
         $rows = [];
-        if ($file->getClientOriginalExtension() === 'csv' || $file->getClientOriginalExtension() === 'txt') {
+        if (in_array($file->getClientOriginalExtension(), ['csv','txt'])) {
             $handle = fopen($file->getRealPath(), 'r');
 
             // Asumsi baris pertama = header
@@ -64,11 +60,8 @@ class InvoiceImportController extends Controller
 
             fclose($handle);
         } else {
-            // Kalau kamu memang pakai Maatwebsite\Excel,
-            // idealnya di sini pakai Excel::toArray(...).
-            // Untuk sekarang, kita fokus pola logikanya dulu.
             return back()->withErrors([
-                'file' => 'Untuk sementara contoh ini hanya mendukung CSV. Sesuaikan dengan logic import Excel yang sudah kamu punya.',
+                'file' => 'Contoh ini hanya mendukung CSV. Sesuaikan dengan logic import Excel yang sudah kamu punya.',
             ]);
         }
 
@@ -76,8 +69,7 @@ class InvoiceImportController extends Controller
         $failed  = [];
 
         foreach ($rows as $row) {
-            // Sesuaikan nama kolom dengan header file kamu
-            $namaSiswa  = $row['nama_siswa'] ?? $row['nama'] ?? null;
+            $namaSiswa   = $row['nama_siswa'] ?? $row['nama'] ?? null;
             $namaProgram = $row['program'] ?? $row['nama_program'] ?? null;
             $total       = $row['total'] ?? $row['total_item'] ?? $row['jumlah'] ?? null;
 
@@ -91,13 +83,13 @@ class InvoiceImportController extends Controller
             $ok = $student && $program && $total;
 
             $rowPreview = [
-                'raw'         => $row,
-                'nama_siswa'  => $namaSiswa,
-                'nama_program'=> $namaProgram,
-                'total'       => $total,
-                'student'     => $student,
-                'program'     => $program,
-                'ok'          => $ok,
+                'raw'          => $row,
+                'nama_siswa'   => $namaSiswa,
+                'nama_program' => $namaProgram,
+                'total'        => $total,
+                'student'      => $student,
+                'program'      => $program,
+                'ok'           => $ok,
             ];
 
             $preview[] = $rowPreview;
@@ -107,7 +99,6 @@ class InvoiceImportController extends Controller
             }
         }
 
-        // Simpan sementara di session supaya bisa diproses saat user klik "Import Sekarang"
         $request->session()->put('sensipay_import_preview', $preview);
 
         return view('sensipay.invoices.import_preview', [
@@ -134,39 +125,32 @@ class InvoiceImportController extends Controller
         try {
             foreach ($preview as $row) {
                 if (! $row['ok']) {
-                    // Lewati yang gagal
                     continue;
                 }
 
-                /** @var \App\Models\Student $student */
                 $student = $row['student'];
-                /** @var \App\Models\Program $program */
                 $program = $row['program'];
                 $total   = (int) $row['total'];
 
-                // Buat invoice
                 $invoice = Invoice::create([
                     'student_id'   => $student->id,
                     'program_id'   => $program->id,
                     'total_amount' => $total,
                     'paid_amount'  => 0,
                     'status'       => 'unpaid',
-                    // Tambah kolom lain sesuai schema kamu, misal invoice_code, due_date, dll
                 ]);
 
-                // Item invoice minimal 1 baris
                 InvoiceItem::create([
-                    'invoice_id' => $invoice->id,
-                    'description'=> $row['nama_program'] ?? ('Program ' . $program->name),
-                    'qty'        => 1,
-                    'price'      => $total,
-                    'total'      => $total,
+                    'invoice_id'  => $invoice->id,
+                    'description' => $row['nama_program'] ?? ('Program ' . $program->name),
+                    'qty'         => 1,
+                    'price'       => $total,
+                    'total'       => $total,
                 ]);
             }
 
             DB::commit();
 
-            // Clear session preview
             $request->session()->forget('sensipay_import_preview');
 
             return redirect()
