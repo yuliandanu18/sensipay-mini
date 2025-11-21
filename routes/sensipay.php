@@ -6,6 +6,7 @@ use App\Http\Controllers\Sensipay\PaymentController;
 use App\Http\Controllers\Sensipay\StudentFinanceController;
 use App\Http\Controllers\Sensipay\ParentDashboardController;
 use App\Http\Controllers\Sensipay\ReminderController;
+use App\Http\Controllers\Sensipay\InvoiceImportController;
 
 Route::prefix('sensipay')
     ->as('sensipay.')
@@ -23,7 +24,7 @@ Route::get('/sensipay/ping', function () {
 });
 
 // ROUTE UTAMA SENSIPAY
-Route::middleware(['web'])
+Route::middleware(['web', 'auth', 'role:owner,operational_director,academic_director,finance'])
     ->prefix('sensipay')
     ->as('sensipay.')
     ->group(function () {
@@ -44,6 +45,14 @@ Route::get('/students/{student}/finance', [StudentFinanceController::class, 'sho
         Route::delete('/payments/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
     Route::get('sensipay/reminders', [ReminderController::class,'index'])
     ->name('sensipay.reminders.index');
+    Route::get('invoices/import', [InvoiceImportController::class, 'showForm'])
+            ->name('invoices.import.form');
+
+        Route::post('invoices/import/preview', [InvoiceImportController::class, 'preview'])
+            ->name('invoices.import.preview');
+
+        Route::post('invoices/import/process', [InvoiceImportController::class, 'process'])
+            ->name('invoices.import.process');
     });
 
 
