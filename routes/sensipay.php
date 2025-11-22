@@ -10,27 +10,20 @@ use App\Http\Controllers\Sensipay\InvoiceImportController;
 use App\Http\Controllers\Sensipay\LegacyCustomerInvoiceImportController;
 use App\Http\Controllers\Sensipay\LegacyInstallmentImportController;
 
-Route::prefix('sensipay')
-    ->as('sensipay.')
-    ->group(function () {
-
-        // ... route sensipay lain (invoices, payments, dll)
-
-      Route::get('sensipay/parent/dashboard', [ParentDashboardController::class, 'index'])
-    ->name('sensipay.parent.dashboard');
-    });
-
-// TEST: pastikan file ini ke-load
+// TEST: pastikan file routes/sensipay.php ke-load
 Route::get('/sensipay/ping', function () {
     return 'sensipay ok';
 });
 
-// ROUTE UTAMA SENSIPAY
+// ROUTE UTAMA SENSIPAY (dengan middleware)
 Route::middleware(['web', 'auth', 'role:owner,operational_director,academic_director,finance'])
     ->prefix('sensipay')
     ->as('sensipay.')
     ->group(function () {
-          // 👉 Halaman keuangan per siswa
+
+        Route::get('/parent/dashboard', [ParentDashboardController::class, 'index'])
+            ->name('parent.dashboard');
+
         Route::get('/students/{student}/finance', [StudentFinanceController::class, 'show'])
             ->name('students.finance');
 
@@ -41,32 +34,29 @@ Route::middleware(['web', 'auth', 'role:owner,operational_director,academic_dire
         Route::get('/invoices/{invoice}/edit', [InvoiceController::class, 'edit'])->name('invoices.edit');
         Route::put('/invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
         Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
-Route::get('/students/{student}/finance', [StudentFinanceController::class, 'show'])
-    ->name('sensipay.student.finance');
+
         Route::post('/invoices/{invoice}/payments', [PaymentController::class, 'store'])->name('payments.store');
         Route::delete('/payments/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
-    Route::get('sensipay/reminders', [ReminderController::class,'index'])
-    ->name('sensipay.reminders.index');
-    Route::get('invoices/import', [InvoiceImportController::class, 'showForm'])
-            ->name('invoices.import.form');
 
+        Route::get('/reminders', [ReminderController::class,'index'])
+            ->name('reminders.index');
+
+        Route::get('invoices/import', [InvoiceImportController::class, 'showForm'])
+            ->name('invoices.import.form');
         Route::post('invoices/import/preview', [InvoiceImportController::class, 'preview'])
             ->name('invoices.import.preview');
-
         Route::post('invoices/import/process', [InvoiceImportController::class, 'process'])
             ->name('invoices.import.process');
-              Route::get('legacy-import', [LegacyCustomerInvoiceImportController::class, 'showForm'])
-            ->name('legacy-import.form');
 
+        Route::get('legacy-import', [LegacyCustomerInvoiceImportController::class, 'showForm'])
+            ->name('legacy-import.form');
         Route::post('legacy-import/process', [LegacyCustomerInvoiceImportController::class, 'process'])
             ->name('legacy-import.process');
-             Route::get('legacy-installments/import', [LegacyInstallmentImportController::class, 'showForm'])
+// Form upload
+        Route::get('legacy-installments/import', [LegacyInstallmentImportController::class, 'showForm'])
             ->name('legacy-installments.import.form');
 
-        Route::post('legacy-installments/process', [LegacyInstallmentImportController::class, 'process'])
+        // Proses upload
+        Route::post('legacy-installments/import', [LegacyInstallmentImportController::class, 'import'])
             ->name('legacy-installments.import.process');
-            
     });
-
-
-
