@@ -5,49 +5,27 @@
     <title>@yield('title', 'Sensipay Mini')</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    {{-- Kalau sudah pakai Vite/Tailwind di project, pakai ini --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-
-    {{-- Kalau BELUM, sementara bisa pakai CDN Tailwind (jangan dua-duanya) --}}
-    {{-- <script src="https://cdn.tailwindcss.com"></script> --}}
 </head>
+
 <body class="bg-slate-100 text-slate-900">
+
 @php
     $user = auth()->user();
     $role = $user->role ?? null;
 
     // Menu untuk orang tua
     $parentMenu = [
-        [
-            'label' => 'Ringkasan Tagihan',
-            'route' => 'sensipay.parent.dashboard',
-        ],
-        // nanti bisa ditambah:
-        // ['label' => 'Riwayat Pembayaran', 'route' => 'sensipay.parent.payments'],
+        ['label' => 'Ringkasan Tagihan', 'route' => 'sensipay.parent.dashboard'],
     ];
 
-    // Menu untuk admin / direksi / finance (contoh sederhana)
+    // Menu admin/direksi
     $adminMenu = [
-         [
-        'label' => 'Dashboard Invoice',
-        'route' => 'sensipay.invoices.index',
-    ],
-    [
-        'label' => 'Parent & OTM',
-        'route' => 'sensipay.parents.index',
-    ],
-    [
-        'label' => 'Import Invoice',
-        'route' => 'sensipay.invoices.import.form',
-    ],
-    [
-        'label' => 'Import Legacy',
-        'route' => 'sensipay.legacy-installments.import.form',
-    ],
-    [
-        'label' => 'Reminders',
-        'route' => 'sensipay.reminders.index',
-    ],
+        ['label' => 'Dashboard Invoice', 'route' => 'sensipay.invoices.index'],
+        ['label' => 'Parent & OTM', 'route' => 'sensipay.parents.index'],
+        ['label' => 'Import Invoice', 'route' => 'sensipay.invoices.import.form'],
+        ['label' => 'Import Legacy', 'route' => 'sensipay.legacy-installments.import.form'],
+        ['label' => 'Reminders', 'route' => 'sensipay.reminders.index'],
     ];
 
     $menuItems = $role === 'parent' ? $parentMenu : $adminMenu;
@@ -67,8 +45,9 @@
         <nav class="flex-1 overflow-y-auto py-3">
             @foreach ($menuItems as $item)
                 @php
-                    $isActive = isset($item['route']) && request()->routeIs($item['route']);
+                    $isActive = request()->routeIs($item['route']);
                 @endphp
+
                 <a href="{{ route($item['route']) }}"
                    class="block px-4 py-2 text-sm
                           {{ $isActive ? 'bg-slate-700 text-white font-semibold' : 'text-slate-200 hover:bg-slate-800' }}">
@@ -84,6 +63,7 @@
             <div class="text-[10px] uppercase tracking-wide">
                 {{ $role ?? '-' }}
             </div>
+
             <form method="POST" action="{{ route('logout') }}" class="mt-2">
                 @csrf
                 <button class="text-xs text-red-300 hover:text-red-200" type="submit">
@@ -93,18 +73,18 @@
         </div>
     </aside>
 
-    {{-- AREA KONTEN UTAMA --}}
+    {{-- CONTENT AREA --}}
     <div class="flex-1 flex flex-col">
 
-        {{-- NAVBAR ATAS --}}
+        {{-- TOP NAVBAR --}}
         <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4">
             <div class="flex items-center gap-2">
-                {{-- Tombol menu mobile (belum diaktifkan JS-nya, nanti bisa ditambah) --}}
                 <span class="md:hidden text-slate-500 text-lg">☰</span>
                 <div class="text-sm uppercase tracking-wide text-slate-500">
                     @yield('page_title', 'Dashboard')
                 </div>
             </div>
+
             <div class="text-xs text-slate-500">
                 @if ($role === 'parent')
                     Login sebagai <span class="font-semibold text-slate-700">Orang Tua</span>
@@ -114,13 +94,13 @@
             </div>
         </header>
 
-        {{-- KONTEN --}}
+        {{-- MAIN CONTENT --}}
         <main class="flex-1 p-4 md:p-6">
             @yield('content')
         </main>
 
         <footer class="border-t border-slate-200 text-center text-[11px] text-slate-400 py-2">
-            Sensipay Mini &middot; Bimbel JET
+            Sensipay Mini · Bimbel JET
         </footer>
     </div>
 </div>

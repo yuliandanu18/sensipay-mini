@@ -5,6 +5,20 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\RoleRedirectController;
 use Illuminate\Support\Facades\Auth;
 
+
+// ======================
+// ROOT: selalu arahkan ke login / dashboard
+// ======================
+Route::get('/', function () {
+    // Kalau sudah login → lempar ke dashboard
+    if (Auth::check()) {
+        return redirect()->route('dashboard');
+    }
+
+    // Kalau belum login → lempar ke halaman login standar
+    return redirect()->route('login');
+});
+
 Route::get('/dashboard', function () {
     $user = Auth::user();
 
