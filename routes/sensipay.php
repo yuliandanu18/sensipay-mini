@@ -4,107 +4,68 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Sensipay\InvoiceController;
 use App\Http\Controllers\Sensipay\PaymentController;
 use App\Http\Controllers\Sensipay\StudentFinanceController;
-use App\Http\Controllers\Sensipay\ParentDashboardController;
 use App\Http\Controllers\Sensipay\ReminderController;
 use App\Http\Controllers\Sensipay\InvoiceImportController;
 use App\Http\Controllers\Sensipay\LegacyCustomerInvoiceImportController;
 use App\Http\Controllers\Sensipay\LegacyInstallmentImportController;
 use App\Http\Controllers\Sensipay\ParentManagementController;
 
-
-// =======================================
 // TEST: pastikan file routes/sensipay.php ke-load
-// =======================================
 Route::get('/sensipay/ping', function () {
     return 'sensipay ok';
 });
 
-// =======================================
-// ROUTE UTAMA SENSIPAY
-// =======================================
-
-Route::middleware(['web', 'auth'])
+// ROUTE UTAMA SENSIPAY (ADMIN / DIREKSI / FINANCE)
+Route::middleware(['web', 'auth', 'role:owner,operational_director,academic_director,finance'])
     ->prefix('sensipay')
     ->as('sensipay.')
     ->group(function () {
 
-        // ================================
-        // Dashboard Orang Tua Murid (OTM)
-        // ================================
-        // Akses khusus user dengan role = parent
-        Route::get('parent/dashboard', [ParentDashboardController::class, 'index'])
-            ->middleware('role:parent')
-            ->name('parent.dashboard');
+        // Ringkasan keuangan per siswa
+        Route::get('/students/{student}/finance', [StudentFinanceController::class, 'show'])
+            ->name('students.finance');
 
-        // ================================
-        // ROUTES KHUSUS OWNER / DIREKSI / FINANCE
-        // ================================
-        Route::middleware('role:owner,operational_director,academic_director,finance')
-            ->group(function () {
+        // CRUD INVOICE
+        Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+        Route::get('/invoices/create', [InvoiceController::class, 'create'])->name('invoices.create');
+        Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
+        Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
+        Route::get('/invoices/{invoice}/edit', [InvoiceController::class, 'edit'])->name('invoices.edit');
+        Route::put('/invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
+        Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
 
-                // Manajemen Orang Tua (Parent Center)
-// ----------------------------
-Route::get('parents', [ParentManagementController::class, 'index'])
-    ->name('parents.index');
+        // PEMBAYARAN
+        Route::post('/invoices/{invoice}/payments', [PaymentController::class, 'store'])->name('payments.store');
+        Route::delete('/payments/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
 
-Route::get('parents/{parent}', [ParentManagementController::class, 'show'])
-    ->name('parents.show');
-                // ----------------------------
-                // Student Finance
-                // ----------------------------
-                Route::get('students/{student}/finance', [StudentFinanceController::class, 'show'])
-                    ->name('students.finance');
+        // REMINDERS
+        Route::get('/reminders', [ReminderController::class, 'index'])
+            ->name('reminders.index');
 
-                // ----------------------------
-                // Invoices CRUD
-                // ----------------------------
-                Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
-                Route::get('invoices/create', [InvoiceController::class, 'create'])->name('invoices.create');
-                Route::post('invoices', [InvoiceController::class, 'store'])->name('invoices.store');
-                Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
-                Route::get('invoices/{invoice}/edit', [InvoiceController::class, 'edit'])->name('invoices.edit');
-                Route::put('invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
-                Route::delete('invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
+        // IMPORT INVOICE BARU (format baru)
+        Route::get('/invoices/import', [InvoiceImportController::class, 'showForm'])
+            ->name('invoices.import.form');
+        Route::post('/invoices/import/preview', [InvoiceImportController::class, 'preview'])
+            ->name('invoices.import.preview');
+        Route::post('/invoices/import/process', [InvoiceImportController::class, 'process'])
+            ->name('invoices.import.process');
 
-                // ----------------------------
-                // Payments
-                // ----------------------------
-                Route::post('invoices/{invoice}/payments', [PaymentController::class, 'store'])
-                    ->name('payments.store');
-                Route::delete('payments/{payment}', [PaymentController::class, 'destroy'])
-                    ->name('payments.destroy');
+        // IMPORT LEGACY CUSTOMER + INVOICE (format lama)
+        Route::get('/legacy-import', [LegacyCustomerInvoiceImportController::class, 'showForm'])
+            ->name('legacy-import.form');
+        Route::post('/legacy-import/process', [LegacyCustomerInvoiceImportController::class, 'process'])
+            ->name('legacy-import.process');
 
-                // ----------------------------
-                // Reminders
-                // ----------------------------
-                Route::get('reminders', [ReminderController::class, 'index'])
-                    ->name('reminders.index');
+        // IMPORT CICILAN LEGACY (BAHANIMPORT: total & angsuran per invoice)
+        Route::get('/legacy-installments/import', [LegacyInstallmentImportController::class, 'showForm'])
+            ->name('legacy-installments.import.form');
+        Route::post('/legacy-installments/import', [LegacyInstallmentImportController::class, 'import'])
+            ->name('legacy-installments.import.process');
 
-                // ----------------------------
-                // Invoice Import (baru)
-                // ----------------------------
-                Route::get('invoices/import', [InvoiceImportController::class, 'showForm'])
-                    ->name('invoices.import.form');
-                Route::post('invoices/import/preview', [InvoiceImportController::class, 'preview'])
-                    ->name('invoices.import.preview');
-                Route::post('invoices/import/process', [InvoiceImportController::class, 'process'])
-                    ->name('invoices.import.process');
+        // MANAGEMENT PARENT & OTM
+        Route::get('/parents', [ParentManagementController::class, 'index'])
+            ->name('parents.index');
 
-                // ----------------------------
-                // Legacy Customer Invoice Import (lama)
-                // ----------------------------
-                Route::get('legacy-import', [LegacyCustomerInvoiceImportController::class, 'showForm'])
-                    ->name('legacy-import.form');
-                Route::post('legacy-import/process', [LegacyCustomerInvoiceImportController::class, 'process'])
-                    ->name('legacy-import.process');
-
-                // ----------------------------
-                // Legacy Installments Import
-                // ----------------------------
-                Route::get('legacy-installments/import', [LegacyInstallmentImportController::class, 'showForm'])
-                    ->name('legacy-installments.import.form');
-
-                Route::post('legacy-installments/import', [LegacyInstallmentImportController::class, 'import'])
-                    ->name('legacy-installments.import.process');
-            });
+        Route::get('/parents/{parent}', [ParentManagementController::class, 'show'])
+            ->name('parents.show');
     });

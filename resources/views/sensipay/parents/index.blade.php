@@ -1,74 +1,71 @@
-
 @extends('sensipay.layout')
 
-@section('title', 'Manajemen Orang Tua & Siswa')
+@section('title', 'Parent & OTM')
+@section('page_title', 'Parent & OTM')
 
 @section('content')
-<div class="mb-4">
-    <h1 class="text-xl font-semibold">Manajemen Orang Tua & Siswa</h1>
-    <p class="text-xs text-slate-500">
-        Halaman ini digunakan admin JET untuk menghubungkan akun orang tua (user role <code>parent</code>) dengan data siswa.
-    </p>
-</div>
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-2xl font-bold mb-4">Daftar Akun Orang Tua</h1>
 
-<div class="mb-3">
-    <form method="get" class="flex items-center gap-2 text-xs">
-        <input type="text"
-               name="q"
-               value="{{ request('q') }}"
-               placeholder="Cari nama siswa / sekolah..."
-               class="flex-1 border rounded-lg px-2 py-1 text-xs">
-        <button class="px-3 py-1 rounded-lg bg-sky-600 text-white text-xs">
-            Cari
-        </button>
-    </form>
-</div>
+        @if ($parents->isEmpty())
+            <div class="p-4 bg-white border rounded">
+                Belum ada akun orang tua (role = parent) yang terdaftar.
+            </div>
+        @else
+            <div class="bg-white border rounded shadow-sm overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-slate-50 border-b">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Nama</th>
+                            <th class="px-3 py-2 text-left">Email</th>
+                            <th class="px-3 py-2 text-right">Jumlah Invoice</th>
+                            <th class="px-3 py-2 text-right">Total Tagihan</th>
+                            <th class="px-3 py-2 text-right">Total Terbayar</th>
+                            <th class="px-3 py-2 text-right">Sisa</th>
+                            <th class="px-3 py-2 text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($parents as $parent)
+                            @php
+                                $total  = $parent->invoices_total_amount ?? 0;
+                                $paid   = $parent->invoices_paid_amount ?? 0;
+                                $remain = max(0, $total - $paid);
+                            @endphp
+                            <tr class="border-b last:border-0">
+                                <td class="px-3 py-2">
+                                    <div class="font-semibold">{{ $parent->name }}</div>
+                                </td>
+                                <td class="px-3 py-2">
+                                    <span class="text-xs text-slate-600">{{ $parent->email }}</span>
+                                </td>
+                                <td class="px-3 py-2 text-right">
+                                    {{ $parent->invoices_count }}
+                                </td>
+                                <td class="px-3 py-2 text-right">
+                                    Rp {{ number_format($total, 0, ',', '.') }}
+                                </td>
+                                <td class="px-3 py-2 text-right">
+                                    Rp {{ number_format($paid, 0, ',', '.') }}
+                                </td>
+                                <td class="px-3 py-2 text-right">
+                                    Rp {{ number_format($remain, 0, ',', '.') }}
+                                </td>
+                                <td class="px-3 py-2 text-center">
+                                    <a href="{{ route('sensipay.parents.show', $parent) }}"
+                                       class="inline-block px-2 py-1 text-xs bg-slate-800 text-white rounded hover:bg-slate-700">
+                                        Lihat detail
+                                    </a>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
 
-<div class="bg-white rounded-xl shadow-sm overflow-hidden text-xs">
-    <table class="min-w-full">
-        <thead class="bg-slate-100 border-b border-slate-200">
-            <tr>
-                <th class="px-3 py-2 text-left">Siswa</th>
-                <th class="px-3 py-2 text-left">Sekolah</th>
-                <th class="px-3 py-2 text-left">Orang Tua (User)</th>
-                <th class="px-3 py-2 text-left">Email</th>
-                <th class="px-3 py-2 text-right">Aksi</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($students as $student)
-                <tr class="border-b border-slate-100 hover:bg-slate-50">
-                    <td class="px-3 py-2">
-                        {{ $student->name }}
-                    </td>
-                    <td class="px-3 py-2">
-                        {{ $student->school_name ?? '-' }}
-                    </td>
-                    <td class="px-3 py-2">
-                        {{ $student->parentUser?->name ?? '-' }}
-                    </td>
-                    <td class="px-3 py-2">
-                        {{ $student->parentUser?->email ?? '-' }}
-                    </td>
-                    <td class="px-3 py-2 text-right">
-                        <a href="{{ route('sensipay.parents.edit', $student) }}"
-                           class="inline-flex items-center px-2 py-1 rounded-lg bg-sky-600 text-white text-[11px]">
-                            Atur Orang Tua
-                        </a>
-                    </td>
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="5" class="px-3 py-4 text-center text-slate-500">
-                        Belum ada data siswa.
-                    </td>
-                </tr>
-            @endforelse
-        </tbody>
-    </table>
-</div>
-
-<div class="mt-3">
-    {{ $students->links() }}
-</div>
+            <div class="mt-4">
+                {{ $parents->links() }}
+            </div>
+        @endif
+    </div>
 @endsection
