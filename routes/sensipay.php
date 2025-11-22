@@ -10,22 +10,18 @@ use App\Http\Controllers\Sensipay\LegacyCustomerInvoiceImportController;
 use App\Http\Controllers\Sensipay\LegacyInstallmentImportController;
 use App\Http\Controllers\Sensipay\ParentManagementController;
 
-// TEST: pastikan file routes/sensipay.php ke-load
 Route::get('/sensipay/ping', function () {
     return 'sensipay ok';
 });
 
-// ROUTE UTAMA SENSIPAY (ADMIN / DIREKSI / FINANCE)
 Route::middleware(['web', 'auth', 'role:owner,operational_director,academic_director,finance'])
     ->prefix('sensipay')
     ->as('sensipay.')
     ->group(function () {
 
-        // Ringkasan keuangan per siswa
         Route::get('/students/{student}/finance', [StudentFinanceController::class, 'show'])
             ->name('students.finance');
 
-        // CRUD INVOICE
         Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
         Route::get('/invoices/create', [InvoiceController::class, 'create'])->name('invoices.create');
         Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
@@ -34,15 +30,12 @@ Route::middleware(['web', 'auth', 'role:owner,operational_director,academic_dire
         Route::put('/invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
         Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
 
-        // PEMBAYARAN
         Route::post('/invoices/{invoice}/payments', [PaymentController::class, 'store'])->name('payments.store');
         Route::delete('/payments/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
 
-        // REMINDERS
         Route::get('/reminders', [ReminderController::class, 'index'])
             ->name('reminders.index');
 
-        // IMPORT INVOICE BARU (format baru)
         Route::get('/invoices/import', [InvoiceImportController::class, 'showForm'])
             ->name('invoices.import.form');
         Route::post('/invoices/import/preview', [InvoiceImportController::class, 'preview'])
@@ -50,22 +43,31 @@ Route::middleware(['web', 'auth', 'role:owner,operational_director,academic_dire
         Route::post('/invoices/import/process', [InvoiceImportController::class, 'process'])
             ->name('invoices.import.process');
 
-        // IMPORT LEGACY CUSTOMER + INVOICE (format lama)
         Route::get('/legacy-import', [LegacyCustomerInvoiceImportController::class, 'showForm'])
             ->name('legacy-import.form');
         Route::post('/legacy-import/process', [LegacyCustomerInvoiceImportController::class, 'process'])
             ->name('legacy-import.process');
 
-        // IMPORT CICILAN LEGACY (BAHANIMPORT: total & angsuran per invoice)
         Route::get('/legacy-installments/import', [LegacyInstallmentImportController::class, 'showForm'])
             ->name('legacy-installments.import.form');
         Route::post('/legacy-installments/import', [LegacyInstallmentImportController::class, 'import'])
             ->name('legacy-installments.import.process');
 
-        // MANAGEMENT PARENT & OTM
         Route::get('/parents', [ParentManagementController::class, 'index'])
             ->name('parents.index');
-
+        Route::get('/parents/create', [ParentManagementController::class, 'create'])
+            ->name('parents.create');
+        Route::post('/parents', [ParentManagementController::class, 'store'])
+            ->name('parents.store');
         Route::get('/parents/{parent}', [ParentManagementController::class, 'show'])
             ->name('parents.show');
+        Route::get('/parents/{parent}/edit', [ParentManagementController::class, 'edit'])
+            ->name('parents.edit');
+        Route::put('/parents/{parent}', [ParentManagementController::class, 'update'])
+            ->name('parents.update');
+
+        Route::post('/parents/{parent}/attach-invoice', [ParentManagementController::class, 'attachInvoice'])
+            ->name('parents.attach-invoice');
+        Route::delete('/parents/{parent}/invoices/{invoice}', [ParentManagementController::class, 'detachInvoice'])
+            ->name('parents.detach-invoice');
     });

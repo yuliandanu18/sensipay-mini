@@ -4,6 +4,10 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
+Route::get('/', function () {
+    return view('home');
+})->name('home');
+
 Route::get('/dashboard', function () {
     $user = Auth::user();
 
@@ -18,10 +22,6 @@ Route::get('/dashboard', function () {
     return redirect()->route('sensipay.invoices.index');
 })->middleware(['auth'])->name('dashboard');
 
-Route::get('/', function () {
-    return 'Hello Jet!';
-});
-
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -32,5 +32,6 @@ require base_path('routes/sensipay.php');
 require base_path('routes/sensijet.php');
 require base_path('routes/sensipay_parent_routes.php');
 require base_path('routes/sensipay_invoice_reminders.php');
+require base_path('routes/sensipay_parent_payment.php');
 
 require __DIR__.'/auth.php';
