@@ -3,36 +3,34 @@
 namespace App\Http\Controllers\Sensipay;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
 use App\Models\Invoice;
+use Illuminate\Support\Facades\Auth;
 
 class ParentDashboardController extends Controller
 {
+    /**
+     * Tampilkan dashboard orang tua murid.
+     *
+     * Menampilkan daftar invoice yang terhubung dengan parent_user_id = user yang login.
+     */
     public function index()
     {
         $user = Auth::user();
 
-        // Semua invoice (sementara global, nanti bisa difilter per parent)
-        $invoices = Invoice::with(['student', 'program'])
-            ->orderBy('due_date')
-            ->get();
+        // Pastikan ini hanya untuk role parent
+        if (! $user || $user->role !== 'parent') {
+            abort(403, 'Akses khusus untuk Orang Tua Murid.');
+        }
 
-        // Ringkasan tagihan bulan ini (berdasarkan due_date)
-        $monthlyInvoices = Invoice::whereBetween('due_date', [
-                now()->startOfMonth(),
-                now()->endOfMonth(),
-            ])->get();
+       $invoices = Invoice::with(['student'])
+    ->where('parent_user_id', $user->id)
+    ->orderByDesc('created_at')
+    ->get();
 
-        $monthlyTotal     = $monthlyInvoices->sum('total_amount');
-        $monthlyPaid      = $monthlyInvoices->sum('paid_amount');
-        $monthlyRemaining = max(0, $monthlyTotal - $monthlyPaid);
 
         return view('sensipay.parent.dashboard', [
-            'user'             => $user,
-            'invoices'         => $invoices,
-            'monthlyTotal'     => $monthlyTotal,
-            'monthlyPaid'      => $monthlyPaid,
-            'monthlyRemaining' => $monthlyRemaining,
+            'user'     => $user,
+            'invoices' => $invoices,
         ]);
     }
 }

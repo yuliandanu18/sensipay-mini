@@ -1,109 +1,96 @@
 @extends('sensipay.layout')
 
-@section('title', 'Dashboard Orang Tua')
-
 @section('content')
-<div class="container mx-auto py-6 space-y-6">
-    <h1 class="text-xl font-semibold">
-        Halo, {{ $user->name }} 👋
-    </h1>
+@section('page_title', 'Dashboard Orang Tua')
 
-    {{-- Ringkasan Tagihan Bulan Ini --}}
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="p-4 rounded-xl border border-slate-200 bg-sky-50">
-            <div class="text-xs text-slate-500">Total Tagihan Bulan Ini</div>
-            <div class="text-lg font-semibold">
-                Rp {{ number_format($monthlyTotal ?? 0, 0, ',', '.') }}
-            </div>
-        </div>
-        <div class="p-4 rounded-xl border border-slate-200 bg-emerald-50">
-            <div class="text-xs text-slate-500">Total Pembayaran Masuk Bulan Ini</div>
-            <div class="text-lg font-semibold">
-                Rp {{ number_format($monthlyPaid ?? 0, 0, ',', '.') }}
-            </div>
-        </div>
-        <div class="p-4 rounded-xl border border-slate-200 bg-amber-50">
-            <div class="text-xs text-slate-500">Sisa Tagihan Bulan Ini</div>
-            <div class="text-lg font-semibold">
-                Rp {{ number_format($monthlyRemaining ?? 0, 0, ',', '.') }}
-            </div>
-        </div>
-    </div>
+    <div class="max-w-5xl mx-auto py-8">
+        <h1 class="text-2xl font-bold mb-4">Dashboard Orang Tua Murid</h1>
 
-    {{-- Tabel Semua Tagihan --}}
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div class="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-            <h2 class="font-semibold text-sm">Daftar Tagihan</h2>
-            <span class="text-xs text-slate-500">
-                Menampilkan {{ $invoices->count() }} invoice
-            </span>
-        </div>
+        <p class="mb-6">
+            Selamat datang,
+            <span class="font-semibold">{{ $user->name }}</span>.
+            Berikut adalah ringkasan tagihan (invoice) yang terhubung dengan akun Anda.
+        </p>
 
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
-                <thead class="bg-slate-100">
-                    <tr>
-                        <th class="px-3 py-2 text-left">Invoice</th>
-                        <th class="px-3 py-2 text-left">Siswa / Program</th>
-                        <th class="px-3 py-2 text-right">Total</th>
-                        <th class="px-3 py-2 text-right">Terbayar</th>
-                        <th class="px-3 py-2 text-right">Sisa</th>
-                        <th class="px-3 py-2 text-center">Status</th>
-                        <th class="px-3 py-2 text-center">Jatuh Tempo</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @forelse($invoices as $inv)
-                    @php
-                        $total = $inv->total_amount ?? 0;
-                        $paid  = $inv->paid_amount ?? 0;
-                        $remaining = max(0, $total - $paid);
-                    @endphp
-                    <tr class="border-t border-slate-100">
-                        <td class="px-3 py-2 align-top">
-                            <div class="font-mono text-xs">
-                                {{ $inv->invoice_code }}
+        @if (session('status'))
+            <div class="mb-4 p-3 rounded bg-green-100 text-green-800">
+                {{ session('status') }}
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="mb-4 p-3 rounded bg-red-100 text-red-800">
+                {{ session('error') }}
+            </div>
+        @endif
+
+        @if ($invoices->isEmpty())
+            <div class="p-4 border rounded bg-white">
+                Belum ada invoice yang terhubung dengan akun Anda.
+            </div>
+        @else
+            <div class="space-y-4">
+                @foreach ($invoices as $invoice)
+                    <div class="p-4 border rounded bg-white shadow-sm">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <div class="text-sm text-gray-500">Kode Invoice</div>
+                                <div class="font-semibold text-lg">{{ $invoice->invoice_code }}</div>
                             </div>
-                        </td>
-                        <td class="px-3 py-2 align-top">
-                            <div class="font-medium">
-                                {{ $inv->student->name ?? '-' }}
+                            <div class="text-right">
+                                <div class="text-sm text-gray-500">Status</div>
+                                <div class="font-semibold">
+                                    @if ($invoice->status === 'paid')
+                                        <span class="text-green-600">LUNAS</span>
+                                    @elseif ($invoice->status === 'partial')
+                                        <span class="text-yellow-600">ANGSUR</span>
+                                    @else
+                                        <span class="text-red-600">BELUM BAYAR</span>
+                                    @endif
+                                </div>
                             </div>
-                            <div class="text-xs text-slate-500">
-                                {{ $inv->program->name ?? '-' }}
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-3">
+                            <div>
+                                <div class="text-gray-500">Nama Siswa</div>
+                                <div class="font-medium">
+                                    {{ optional($invoice->student)->name ?? '-' }}
+                                </div>
                             </div>
-                        </td>
-                        <td class="px-3 py-2 text-right align-top">
-                            Rp {{ number_format($total, 0, ',', '.') }}
-                        </td>
-                        <td class="px-3 py-2 text-right align-top">
-                            Rp {{ number_format($paid, 0, ',', '.') }}
-                        </td>
-                        <td class="px-3 py-2 text-right align-top">
-                            Rp {{ number_format($remaining, 0, ',', '.') }}
-                        </td>
-                        <td class="px-3 py-2 text-center align-top">
-                            <span class="inline-flex px-2 py-1 rounded-full text-xs
-                                @if($inv->status === 'paid') bg-emerald-100 text-emerald-700
-                                @elseif($inv->status === 'partial') bg-amber-100 text-amber-700
-                                @else bg-rose-100 text-rose-700 @endif">
-                                {{ strtoupper($inv->status ?? 'UNPAID') }}
+                            <div>
+                                <div class="text-gray-500">Total Tagihan</div>
+                                <div class="font-medium">
+                                    Rp {{ number_format($invoice->total_amount, 0, ',', '.') }}
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-gray-500">Sudah Dibayar</div>
+                                <div class="font-medium">
+                                    Rp {{ number_format($invoice->paid_amount, 0, ',', '.') }}
+                                </div>
+                            </div>
+                        </div>
+
+                        @php
+                            $remaining = max(0, $invoice->total_amount - $invoice->paid_amount);
+                        @endphp
+
+                        <div class="mb-2 text-sm">
+                            <span class="text-gray-500">Sisa Tagihan:</span>
+                            <span class="font-semibold">
+                                Rp {{ number_format($remaining, 0, ',', '.') }}
                             </span>
-                        </td>
-                        <td class="px-3 py-2 text-center text-xs align-top">
-                            {{ optional($inv->due_date)->format('d/m/Y') ?? '-' }}
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="7" class="px-3 py-6 text-center text-slate-500">
-                            Belum ada tagihan yang tercatat.
-                        </td>
-                    </tr>
-                @endforelse
-                </tbody>
-            </table>
-        </div>
+                        </div>
+
+                        {{-- Bagian detail angsuran dimatikan dulu
+                        @if ($invoice->installments && $invoice->installments->count())
+                            ...
+                        @endif
+                        --}}
+                    </div>
+                @endforeach
+            </div>
+        @endif
     </div>
-</div>
 @endsection
