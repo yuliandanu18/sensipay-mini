@@ -5,13 +5,19 @@
     <title>@yield('title', 'Sensipay Mini')</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
+    {{-- Jika project sudah memakai Vite --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    {{-- Jika belum, sementara bisa pakai CDN Tailwind:
+         <script src="https://cdn.tailwindcss.com"></script>
+    --}}
 </head>
 <body class="bg-slate-100 text-slate-900">
 @php
+    /** @var \App\Models\User|null $user */
     $user = auth()->user();
     $role = $user->role ?? null;
 
+    // Menu untuk orang tua
     $parentMenu = [
         [
             'label' => 'Ringkasan Tagihan',
@@ -19,6 +25,7 @@
         ],
     ];
 
+    // Menu untuk admin / direksi / finance
     $adminMenu = [
         [
             'label' => 'Dashboard Invoice',
@@ -40,6 +47,10 @@
             'label' => 'Reminders',
             'route' => 'sensipay.reminders.index',
         ],
+        [
+            'label' => 'Konfirmasi Pembayaran',
+            'route' => 'sensipay.payments.index',
+        ],
     ];
 
     $menuItems = $role === 'parent' ? $parentMenu : $adminMenu;
@@ -47,6 +58,7 @@
 
 <div class="min-h-screen flex">
 
+    {{-- SIDEBAR --}}
     <aside class="hidden md:flex md:flex-col w-60 bg-slate-900 text-slate-100">
         <div class="h-16 flex items-center px-4 border-b border-slate-800">
             <div class="flex flex-col leading-tight">
@@ -84,24 +96,32 @@
         </div>
     </aside>
 
+    {{-- AREA KONTEN UTAMA --}}
     <div class="flex-1 flex flex-col">
 
+        {{-- NAVBAR ATAS --}}
         <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4">
             <div class="flex items-center gap-2">
+                {{-- Tombol menu mobile (ikon saja, JS-nya bisa ditambah nanti) --}}
                 <span class="md:hidden text-slate-500 text-lg">☰</span>
                 <div class="text-sm uppercase tracking-wide text-slate-500">
                     @yield('page_title', 'Dashboard')
                 </div>
             </div>
             <div class="text-xs text-slate-500">
-                @if ($role === 'parent')
-                    Login sebagai <span class="font-semibold text-slate-700">Orang Tua</span>
+                @if ($user)
+                    @if ($role === 'parent')
+                        Login sebagai <span class="font-semibold text-slate-700">Orang Tua</span>
+                    @else
+                        Login sebagai <span class="font-semibold text-slate-700">{{ $role ?? 'User' }}</span>
+                    @endif
                 @else
-                    Login sebagai <span class="font-semibold text-slate-700">{{ $role ?? 'User' }}</span>
+                    Belum login
                 @endif
             </div>
         </header>
 
+        {{-- KONTEN --}}
         <main class="flex-1 p-4 md:p-6">
             @yield('content')
         </main>

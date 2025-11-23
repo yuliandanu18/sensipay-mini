@@ -7,176 +7,103 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Mail;
 
 class ParentPaymentController extends Controller
 {
     /**
-     * Parent membuat pembayaran manual untuk satu invoice.
+     * Simpan konfirmasi pembayaran dari portal orang tua.
      *
      * Aturan:
-     * - Minimal pembayaran rutin: 1.000.000
-     * - Harus kelipatan 50.000
-     * - Kecuali kalau sisa tagihan <= 1.000.000 → harus dibayar lunas (amount == sisa)
-     * - Amount tidak boleh melebihi sisa tagihan.
+     * - Jika sisa > 1.000.000 -> minimal bayar 1.000.000 & kelipatan 50.000
+     * - Jika sisa <= 1.000.000 -> wajib pelunasan penuh
+     * - Pembayaran disimpan sebagai status 'pending' (belum menambah paid_amount di invoice)
      */
     public function store(Request $request, Invoice $invoice)
     {
         $user = Auth::user();
 
         if (! $user) {
-            return redirect()->route('login');
+            abort(403, 'Silakan login sebagai orang tua.');
         }
 
-        // Pastikan ini orang tua dan invoice milik dia
-        if ($user->role !== 'parent' || (int) $invoice->parent_user_id !== (int) $user->id) {
-            abort(403, 'Tidak boleh membayar invoice milik akun lain.');
+        // Jika parent_user_id diisi, baru cek. Kalau null, jangan diblok.
+        if (! is_null($invoice->parent_user_id) && $invoice->parent_user_id !== $user->id) {
+            abort(403, 'Invoice ini bukan milik Anda.');
         }
 
-        $remaining = max(0, ($invoice->total_amount ?? 0) - ($invoice->paid_amount ?? 0));
-
-        if ($remaining <= 0) {
-            return back()->with('error', 'Invoice ini sudah lunas.')->withInput();
-        }
-
+        // Validasi dasar (nominal nanti kita normalisasi manual)
         $validated = $request->validate([
-            'amount'    => ['required', 'numeric', 'min:1000'],
-            'reference' => ['nullable', 'string', 'max:255'],
-            'evidence'  => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:4096'],
+            'amount' => ['required'],
+            'note'   => ['nullable', 'string', 'max:255'],
+            'proof'  => ['nullable', 'file', 'image', 'max:2048'], // max ~2MB
         ]);
 
-        $amount = (int) $validated['amount'];
+        // ===== 1. NORMALISASI NOMINAL =====
+        // Contoh input:
+        //  - "500000"
+        //  - "500.000"
+        //  - "500,000"
+        //  - "500 000"
+        // semuanya akan jadi "500000"
+        $rawAmount   = (string) $validated['amount'];
+        $onlyDigits  = preg_replace('/[^\d]/', '', $rawAmount);
 
-        if ($amount <= 0) {
-            return back()->with('error', 'Nominal pembayaran tidak valid.')->withInput();
+        if ($onlyDigits === '' || (int) $onlyDigits <= 0) {
+            return back()->with('error', 'Nominal bayar tidak valid.');
+        }
+
+        $amount = (int) $onlyDigits;
+
+        // ===== 2. HITUNG SISA TAGIHAN =====
+        $total     = (int) ($invoice->total_amount ?? 0);
+        $paid      = (int) ($invoice->paid_amount ?? 0);
+        $remaining = max(0, $total - $paid);
+
+        if ($remaining <= 0) {
+            return back()->with('error', 'Invoice ini sudah lunas.');
         }
 
         if ($amount > $remaining) {
-            return back()->with('error', 'Nominal pembayaran melebihi sisa tagihan.')->withInput();
+            return back()->with('error', 'Nominal melebihi sisa tagihan.');
         }
 
-        // Aturan minimal & kelipatan
-        if ($remaining <= 1000000) {
-            // Sisa kecil: wajib pelunasan penuh
-            if ($amount !== (int) $remaining) {
-                return back()->with('error', 'Sisa tagihan di bawah atau sama dengan 1 juta harus dibayar lunas.')->withInput();
+        // ===== 3. ATURAN BISNIS =====
+        if ($remaining > 1_000_000) {
+            // Sisa masih besar -> minimal 1jt dan kelipatan 50rb
+            if ($amount < 1_000_000) {
+                return back()->with('error', 'Minimal pembayaran Rp 1.000.000 untuk tagihan ini.');
+            }
+
+            if ($amount % 50_000 !== 0) {
+                return back()->with('error', 'Nominal harus kelipatan Rp 50.000.');
             }
         } else {
-            // Masih besar: minimal 1 juta dan kelipatan 50 ribu
-            if ($amount < 1000000) {
-                return back()->with('error', 'Minimal pembayaran bulan ini adalah Rp 1.000.000.')->withInput();
-            }
-
-            if ($amount % 50000 !== 0) {
-                return back()->with('error', 'Nominal pembayaran harus kelipatan Rp 50.000.')->withInput();
+            // remaining <= 1.000.000 -> wajib pelunasan penuh
+            if ($amount !== $remaining) {
+                return back()->with('error', 'Untuk sisa di bawah atau sama dengan Rp 1.000.000, wajib pelunasan penuh.');
             }
         }
 
-        // Simpan bukti bila ada
-        $evidencePath = null;
-        if ($request->hasFile('evidence')) {
-            $evidencePath = $request->file('evidence')->store('payment_evidence', 'public');
+        // ===== 4. SIMPAN BUKTI JIKA ADA =====
+        $proofPath = null;
+        if ($request->hasFile('proof')) {
+            $proofPath = $request->file('proof')->store('payment_proofs', 'public');
         }
 
-        $reference = $validated['reference'] ?? null;
-
-        // Buat payment + langsung update invoice
-        $payment = Payment::create([
+        // ===== 5. CATAT PEMBAYARAN (STATUS PENDING) =====
+        Payment::create([
             'invoice_id' => $invoice->id,
             'amount'     => $amount,
             'paid_at'    => now(),
             'method'     => 'parent-portal',
-            'note'       => $this->buildNote($reference, $evidencePath),
+            'note'       => $validated['note'] ?? null,
+            'status'     => 'pending',
+            'proof_path' => $proofPath,
         ]);
 
-        // Update angka invoice
-        $invoice->paid_amount = ($invoice->paid_amount ?? 0) + $amount;
-        if (method_exists($invoice, 'recalcStatus')) {
-            $invoice->recalcStatus();
-        } else {
-            $invoice->save();
-        }
+        // paid_amount di invoice tetap belum diubah,
+        // nanti baru naik saat admin APPROVE.
 
-        // Kirim notifikasi ke admin (email + WA)
-        $this->notifyAdmin($user, $invoice, $payment, $remaining);
-
-        return back()->with('status', 'Terima kasih. Pembayaran Anda sudah tercatat dan akan dicek admin.');
-    }
-
-    protected function buildNote(?string $reference, ?string $evidencePath): string
-    {
-        $parts = [];
-
-        if ($reference) {
-            $parts[] = 'Ref: ' . $reference;
-        }
-
-        if ($evidencePath) {
-            $parts[] = 'Bukti: ' . $evidencePath;
-        }
-
-        if (empty($parts)) {
-            return 'Pembayaran via parent portal.';
-        }
-
-        return implode(' | ', $parts);
-    }
-
-    protected function notifyAdmin($user, Invoice $invoice, Payment $payment, float $previousRemaining): void
-    {
-        $studentName = optional($invoice->student)->name ?? '-';
-        $remainingAfter = max(0, ($invoice->total_amount ?? 0) - ($invoice->paid_amount ?? 0));
-
-        $baseMessage = "PEMBAYARAN BARU DARI ORANG TUA (Parent Portal)
-"
-            . "Parent  : {$user->name} ({$user->email})
-"
-            . "Siswa   : {$studentName}
-"
-            . "Invoice : {$invoice->invoice_code}
-"
-            . "Nominal : Rp " . number_format($payment->amount, 0, ',', '.') . "
-"
-            . "Sisa sebelum : Rp " . number_format($previousRemaining, 0, ',', '.') . "
-"
-            . "Sisa sesudah : Rp " . number_format($remainingAfter, 0, ',', '.') . "
-"
-            . "Metode  : {$payment->method}
-"
-            . "Catatan : {$payment->note}
-";
-
-        // Kirim email
-        try {
-            $adminEmail = env('JET_ADMIN_EMAIL');
-
-            if ($adminEmail) {
-                Mail::raw($baseMessage, function ($mail) use ($adminEmail) {
-                    $mail->to($adminEmail)
-                        ->subject('Pembayaran baru dari Parent Portal - Sensipay');
-                });
-            }
-        } catch (\Throwable $e) {
-            // Jangan gagalkan flow kalau email gagal
-        }
-
-        // Kirim WA via Fonnte (kalau diset)
-        try {
-            $token       = config('services.fonnte.token');
-            $url         = config('services.fonnte.url', 'https://api.fonnte.com/send');
-            $adminNumber = config('services.fonnte.admin_number', env('JET_ADMIN_WA'));
-
-            if ($token && $url && $adminNumber) {
-                Http::withHeaders([
-                    'Authorization' => $token,
-                ])->asForm()->post($url, [
-                    'target'  => $adminNumber,
-                    'message' => $baseMessage,
-                ]);
-            }
-        } catch (\Throwable $e) {
-            // Diam saja; bisa dicek di log kalau mau
-        }
+        return back()->with('status', 'Konfirmasi pembayaran berhasil dikirim. Admin JET akan melakukan verifikasi.');
     }
 }

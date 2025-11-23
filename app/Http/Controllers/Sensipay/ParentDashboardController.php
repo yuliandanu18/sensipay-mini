@@ -16,7 +16,7 @@ class ParentDashboardController extends Controller
             abort(403, 'Hanya akun orang tua yang bisa mengakses halaman ini.');
         }
 
-        $invoices = Invoice::with('student')
+        $invoices = Invoice::with(['student', 'payments'])
             ->where('parent_user_id', $user->id)
             ->orderByDesc('created_at')
             ->get();
