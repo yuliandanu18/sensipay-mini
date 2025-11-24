@@ -23,14 +23,24 @@ Route::get('/sensipay/ping', function () {
 // ==============================
 // ADMIN / INTERNAL JET
 // ==============================
-Route::middleware(['web', 'auth', 'role:owner,operational_director,academic_director,finance'])
+Route::middleware(['web','auth'])
     ->prefix('sensipay')
     ->as('sensipay.')
     ->group(function () {
+        Route::get('invoices/{invoice}/payments', [PaymentController::class, 'index'])
+            ->middleware('role:owner,operational_director,academic_director,finance,parent')
+            ->name('invoices.payments.index');
 
+        Route::post('invoices/{invoice}/payments', [PaymentController::class, 'store'])
+            ->middleware('role:owner,operational_director,academic_director,finance,parent')
+            ->name('invoices.payments.store');
         // Ping dalam group (optional)
         Route::get('/ping', fn () => 'sensipay ok')->name('ping');
-
+      // tombol DEV: generate dummy invoice (LOCAL ONLY)
+    Route::post('/invoices/generate-dummy', [InvoiceController::class, 'generateDummy'])
+        ->name('invoices.generate-dummy');
+         Route::post('/invoices/reset-dummy', [InvoiceController::class, 'resetDummy'])
+            ->name('invoices.reset-dummy'); // <-- PERHATIKAN INI
         // ===== FINANCE SISWA =====
         Route::get('/students/{student}/finance', [StudentFinanceController::class, 'show'])
             ->name('students.finance');
@@ -84,7 +94,10 @@ Route::middleware(['web', 'auth', 'role:owner,operational_director,academic_dire
 
         Route::delete('/parents/{parent}/invoices/{invoice}', [ParentManagementController::class, 'detachInvoice'])
             ->name('parents.detach-invoice');
+         
+
     });
+    
 // ==============================
 // PORTAL ORANG TUA
 // ==============================
@@ -107,5 +120,6 @@ Route::resource('invoices', InvoiceController::class);
 // Tambah ini persis di bawah resource invoices:
 Route::post('/invoices/{invoice}/recalc-status', [InvoiceController::class, 'recalcStatus'])
     ->name('invoices.recalc-status');
+  
 
     });

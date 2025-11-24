@@ -8,6 +8,9 @@ use App\Models\Student;
 use App\Models\Program;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use App\Models\Payment;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 class InvoiceController extends Controller
 {
@@ -62,6 +65,62 @@ class InvoiceController extends Controller
 
         return view('sensipay.invoices.create', compact('students', 'programs'));
     }
+/**
+     * Generate dummy data untuk development:
+     * - reset payments & invoices
+     * - buat 1 parent dummy
+     * - buat 1 student dummy
+     * - buat 1 program dummy
+     * - buat 3 invoice contoh
+     */
+    public function resetDummy(Request $request)
+{
+    // Supaya route lama `sensipay.invoices.reset-dummy` tetap jalan,
+    // kita cukup delegasikan ke generateDummy.
+    return $this->generateDummy($request);
+}
+    public function generateDummy(Request $request)
+{
+    if (! app()->environment('local')) {
+        abort(403, 'Fitur ini hanya untuk environment LOCAL.');
+    }
+
+    $emailDummy = 'parent.dummy@sensipay.test';
+    $waDummy    = '081210382121';       // boleh ganti, WA dummy/admin
+    $plainPass  = 'parentdummy123';      // biar kamu hafal
+
+    DB::transaction(function () use ($emailDummy, $waDummy, $plainPass) {
+
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        Payment::truncate();
+        Invoice::truncate();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+
+        // 🔑 Kunci pakai EMAIL, bukan phone
+        $parent = User::updateOrCreate(
+            ['email' => $emailDummy],
+            [
+                'name'     => 'Orang Tua Dummy',
+                'password' => bcrypt($plainPass),
+                'role'     => 'parent',
+                'phone'    => $waDummy,
+            ]
+        );
+
+        // lanjut student / program / invoices dummy persis punyamu tadi...
+        // (boleh tetap pakai Student::firstOrCreate, Program::firstOrCreate, dll)
+    });
+
+    return redirect()
+        ->route('sensipay.invoices.index')
+        ->with([
+            'success'               => 'Dummy data berhasil digenerate.',
+            'dummy_parent_email'    => $emailDummy,
+            'dummy_parent_password' => $plainPass,
+        ]);
+}
+
+
 
     public function store(Request $request)
     {
@@ -176,4 +235,5 @@ public function recalcStatus(Invoice $invoice)
 
         return $prefix . $random;
     }
+    
 }

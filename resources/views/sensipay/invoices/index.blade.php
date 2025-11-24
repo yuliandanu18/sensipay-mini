@@ -1,10 +1,30 @@
 @extends('sensipay.layout')
 
-@section('title', 'Daftar Invoice',)
-
+@section('title', 'Daftar Invoice')
 @section('content')
 
+@if(session('dummy_parent_email'))
+    <div class="mb-4 p-3 bg-blue-100 border border-blue-300 text-blue-800 rounded text-sm">
+        <strong>Dummy Parent Login (LOCAL):</strong><br>
+        Email: <code>{{ session('dummy_parent_email') }}</code><br>
+        Password: <code>{{ session('dummy_parent_password') }}</code>
+    </div>
+@endif
+
+<div class="mb-4 flex justify-end">
+    <form method="POST" action="{{ route('sensipay.invoices.reset-dummy') }}"
+          onsubmit="return confirm('Yakin reset semua invoice dan pakai dummy?')">
+        @csrf
+        <button class="px-3 py-2 bg-red-600 text-white text-xs rounded-lg hover:bg-red-700">
+            🔥 Reset Dummy Invoice
+        </button>
+    </form>
+</div>
+
 <h1 class="text-xl font-semibold mb-4">Daftar Invoice</h1>
+
+
+
 
 {{-- FILTER --}}
 <form method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-5 text-xs">
@@ -37,6 +57,7 @@
     </button>
 
 </form>
+
 
 {{-- TABLE --}}
 <div class="bg-white rounded-xl shadow text-xs overflow-hidden">
