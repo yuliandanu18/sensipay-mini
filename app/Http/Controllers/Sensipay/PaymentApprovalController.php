@@ -12,20 +12,31 @@ class PaymentApprovalController extends Controller
     /**
      * Halaman daftar pembayaran untuk approval admin.
      */
-    public function index()
+   
+
+public function index(Request $request)
     {
-        $payments = Payment::with([
+        $query = Payment::with([
                 'invoice',
                 'invoice.student',
                 'invoice.student.parent',
             ])
             ->orderByRaw("FIELD(status, 'pending', 'approved', 'rejected')")
-            ->latest()
-            ->paginate(50);
+            ->latest();
 
-        return view('sensipay.payments.index', compact('payments'));
+        // Ambil filter status dari query string: ?status=pending/approved/rejected
+        $status = $request->query('status');
+
+        if (in_array($status, ['pending', 'approved', 'rejected'], true)) {
+            $query->where('status', $status);
+        } else {
+            $status = null; // kalau nggak valid, anggap "semua"
+        }
+
+        $payments = $query->paginate(50)->withQueryString();
+
+        return view('sensipay.payments.index', compact('payments', 'status'));
     }
-
     /**
      * Setujui pembayaran.
      *

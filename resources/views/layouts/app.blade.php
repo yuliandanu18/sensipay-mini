@@ -32,5 +32,24 @@
                 {{ $slot }}
             </main>
         </div>
+            @php
+        $user = auth()->user();
+        $isParent = $user && $user->role === 'parent';
+        $waNumber = config('services.jet.admin_wa');
+        $waText   = urlencode(config('services.jet.admin_wa_text'));
+    @endphp
+
+    <!-- @if($isParent && $waNumber)
+        <a href="https://wa.me/{{ $waNumber }}?text={{ $waText }}"
+           class="fixed bottom-4 right-4 z-40 inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-3 text-white shadow-lg shadow-emerald-400/40 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+            <span class="mr-2 text-lg">💬</span>
+            <span class="text-xs font-semibold hidden sm:inline">
+                Hubungi Admin
+            </span>
+        </a>
+    @endif -->
+</body>
+</html>
+
     </body>
 </html>

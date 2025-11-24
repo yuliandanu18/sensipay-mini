@@ -11,6 +11,34 @@ use Illuminate\Support\Facades\Auth;
 class ParentPaymentController extends Controller
 {
     /**
+     * Tampilkan detail 1 invoice + form konfirmasi pembayaran.
+     */
+    public function show(Invoice $invoice)
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            abort(403, 'Silakan login sebagai orang tua.');
+        }
+
+        // Jika parent_user_id terisi, pastikan cocok dengan akun yang login
+        if (! is_null($invoice->parent_user_id) && $invoice->parent_user_id !== $user->id) {
+            abort(403, 'Invoice ini bukan milik Anda.');
+        }
+
+        $total     = (int) ($invoice->total_amount ?? 0);
+        $paid      = (int) ($invoice->paid_amount ?? 0);
+        $remaining = max(0, $total - $paid);
+
+        return view('sensipay.parent.invoice-show', [
+            'invoice'   => $invoice,
+            'total'     => $total,
+            'paid'      => $paid,
+            'remaining' => $remaining,
+        ]);
+    }
+
+    /**
      * Simpan konfirmasi pembayaran dari portal orang tua.
      *
      * Aturan:
@@ -39,12 +67,6 @@ class ParentPaymentController extends Controller
         ]);
 
         // ===== 1. NORMALISASI NOMINAL =====
-        // Contoh input:
-        //  - "500000"
-        //  - "500.000"
-        //  - "500,000"
-        //  - "500 000"
-        // semuanya akan jadi "500000"
         $rawAmount   = (string) $validated['amount'];
         $onlyDigits  = preg_replace('/[^\d]/', '', $rawAmount);
 
@@ -69,7 +91,6 @@ class ParentPaymentController extends Controller
 
         // ===== 3. ATURAN BISNIS =====
         if ($remaining > 1_000_000) {
-            // Sisa masih besar -> minimal 1jt dan kelipatan 50rb
             if ($amount < 1_000_000) {
                 return back()->with('error', 'Minimal pembayaran Rp 1.000.000 untuk tagihan ini.');
             }
@@ -100,9 +121,6 @@ class ParentPaymentController extends Controller
             'status'     => 'pending',
             'proof_path' => $proofPath,
         ]);
-
-        // paid_amount di invoice tetap belum diubah,
-        // nanti baru naik saat admin APPROVE.
 
         return back()->with('status', 'Konfirmasi pembayaran berhasil dikirim. Admin JET akan melakukan verifikasi.');
     }

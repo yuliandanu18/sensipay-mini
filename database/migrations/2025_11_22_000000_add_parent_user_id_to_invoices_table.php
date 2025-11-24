@@ -11,11 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('invoices', function (Blueprint $table) {
-            if (! Schema::hasColumn('invoices', 'parent_user_id')) {
-                $table->unsignedBigInteger('parent_user_id')->nullable()->after('student_id')->index();
-            }
-        });
+        // Tambah kolom hanya kalau BELUM ada
+        if (! Schema::hasColumn('invoices', 'parent_user_id')) {
+            Schema::table('invoices', function (Blueprint $table) {
+                $table->unsignedBigInteger('parent_user_id')
+                    ->nullable()
+                    ->after('student_id');
+            });
+        }
     }
 
     /**
@@ -23,10 +26,11 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('invoices', function (Blueprint $table) {
-            if (Schema::hasColumn('invoices', 'parent_user_id')) {
+        // Hapus kolom hanya kalau MEMANG ada
+        if (Schema::hasColumn('invoices', 'parent_user_id')) {
+            Schema::table('invoices', function (Blueprint $table) {
                 $table->dropColumn('parent_user_id');
-            }
-        });
+            });
+        }
     }
 };

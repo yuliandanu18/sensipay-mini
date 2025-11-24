@@ -18,12 +18,14 @@ class Invoice extends Model
         'paid_amount',
         'status',
         'due_date',
+        'last_reminder_sent_at', // optional, biar bisa mass-assign kalau perlu
     ];
 
     protected $casts = [
-        'due_date'     => 'date',
-        'total_amount' => 'float',
-        'paid_amount'  => 'float',
+        'due_date'             => 'date',
+        'total_amount'         => 'float',
+        'paid_amount'          => 'float',
+        'last_reminder_sent_at'=> 'datetime',
     ];
 
     public function student()
@@ -66,5 +68,37 @@ class Invoice extends Model
         }
 
         $this->save();
+    }
+
+    /**
+     * Bantu cek apakah perlu dikirimi reminder hari ini.
+     */
+    public function shouldSendReminderToday(): bool
+    {
+        if (! $this->due_date) {
+            return false;
+        }
+
+        $today    = now()->startOfDay();
+        $nextWeek = now()->addDays(7)->endOfDay();
+
+        $status = $this->status;
+        $isUnpaid = in_array($status, ['unpaid', 'partial', null], true);
+
+        if (! $isUnpaid) {
+            return false;
+        }
+
+        // Jatuh tempo dalam 7 hari ke depan atau sudah lewat
+        if (! $this->due_date->between($today, $nextWeek) && ! $this->due_date->lt($today)) {
+            return false;
+        }
+
+        // Jangan kirim dua kali di hari yang sama
+        if ($this->last_reminder_sent_at && $this->last_reminder_sent_at->greaterThanOrEqualTo($today)) {
+            return false;
+        }
+
+        return true;
     }
 }

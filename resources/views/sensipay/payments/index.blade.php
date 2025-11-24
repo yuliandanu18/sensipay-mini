@@ -9,6 +9,7 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
+            {{-- FLASH MESSAGE --}}
             @if(session('success'))
                 <div class="mb-4 rounded-md bg-green-100 p-3 text-sm text-green-800">
                     {{ session('success') }}
@@ -23,12 +24,46 @@
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-4 text-gray-900">
+
+                    {{-- JUDUL --}}
                     <div class="mb-4 flex items-center justify-between">
                         <h1 class="text-lg font-semibold">
                             Approval Pembayaran Orang Tua
                         </h1>
                     </div>
 
+                    {{-- FILTER STATUS --}}
+                    @php
+                        $currentStatus = $status ?? null;
+                    @endphp
+
+                    <div class="mb-4 flex flex-wrap gap-2">
+                        <a href="{{ route('sensipay.payments.index') }}"
+                           class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold
+                                  {{ $currentStatus === null ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                            Semua
+                        </a>
+
+                        <a href="{{ route('sensipay.payments.index', ['status' => 'pending']) }}"
+                           class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold
+                                  {{ $currentStatus === 'pending' ? 'bg-yellow-500 text-white' : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' }}">
+                            Pending
+                        </a>
+
+                        <a href="{{ route('sensipay.payments.index', ['status' => 'approved']) }}"
+                           class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold
+                                  {{ $currentStatus === 'approved' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-800 hover:bg-green-200' }}">
+                            Approved
+                        </a>
+
+                        <a href="{{ route('sensipay.payments.index', ['status' => 'rejected']) }}"
+                           class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold
+                                  {{ $currentStatus === 'rejected' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-800 hover:bg-red-200' }}">
+                            Rejected
+                        </a>
+                    </div>
+
+                    {{-- TABEL PEMBAYARAN --}}
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 text-sm">
                             <thead class="bg-gray-50">
@@ -38,6 +73,7 @@
                                     <th class="px-3 py-2 text-left font-medium text-gray-600">Siswa</th>
                                     <th class="px-3 py-2 text-left font-medium text-gray-600">Orang Tua</th>
                                     <th class="px-3 py-2 text-right font-medium text-gray-600">Jumlah</th>
+                                    <th class="px-3 py-2 text-center font-medium text-gray-600">Bukti</th>
                                     <th class="px-3 py-2 text-center font-medium text-gray-600">Status</th>
                                     <th class="px-3 py-2 text-center font-medium text-gray-600">Aksi</th>
                                 </tr>
@@ -60,6 +96,21 @@
                                         <td class="px-3 py-2 whitespace-nowrap text-right">
                                             Rp {{ number_format($payment->amount ?? 0, 0, ',', '.') }}
                                         </td>
+
+                                        {{-- BUKTI --}}
+                                        <td class="px-3 py-2 whitespace-nowrap text-center">
+                                            @if(!empty($payment->proof_path))
+                                                <a href="{{ asset('storage/' . $payment->proof_path) }}"
+                                                   target="_blank"
+                                                   class="text-xs text-blue-600 underline hover:text-blue-800">
+                                                    Lihat
+                                                </a>
+                                            @else
+                                                <span class="text-xs text-gray-400">-</span>
+                                            @endif
+                                        </td>
+
+                                        {{-- STATUS --}}
                                         <td class="px-3 py-2 whitespace-nowrap text-center">
                                             @if($payment->status === 'pending')
                                                 <span class="inline-flex rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-semibold text-yellow-800">
@@ -75,6 +126,8 @@
                                                 </span>
                                             @endif
                                         </td>
+
+                                        {{-- AKSI --}}
                                         <td class="px-3 py-2 whitespace-nowrap text-center">
                                             @if($payment->status === 'pending')
                                                 <form action="{{ route('sensipay.payments.approve', $payment) }}"
@@ -104,7 +157,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="px-3 py-4 text-center text-gray-500">
+                                        <td colspan="8" class="px-3 py-4 text-center text-gray-500">
                                             Belum ada data pembayaran.
                                         </td>
                                     </tr>

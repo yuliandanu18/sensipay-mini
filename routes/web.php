@@ -5,11 +5,13 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\RoleRedirectController;
 
+
 Route::get('/', function () {
-    return 'Hello Jet!';
+    return auth()->check()
+        ? redirect()->route('home')
+        : view('home');
 });
 
-// Bisa tetap dipakai jika mau routing khusus ke /home
 Route::get('/home', RoleRedirectController::class)
     ->middleware('auth')
     ->name('home');

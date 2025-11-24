@@ -1,233 +1,159 @@
-@extends('sensipay.layout')
-
-@section('title', 'Dashboard Orang Tua')
-@section('page_title', 'Dashboard Orang Tua')
-
-@section('content')
-    <div class="max-w-5xl mx-auto">
-        <h1 class="text-2xl font-bold mb-4">Dashboard Orang Tua Murid</h1>
-
-        @php
-            /** @var \App\Models\User $user */
-            $user = auth()->user();
-        @endphp
-
-        <p class="mb-6 text-sm">
-            Selamat datang,
-            <span class="font-semibold">{{ $user->name ?? '-' }}</span>.<br>
-            Berikut adalah ringkasan tagihan (invoice) yang terhubung dengan akun Anda.
+{{-- resources/views/sensipay/parent/dashboard.blade.php --}}
+<x-app-layout>
+    <x-slot name="header">
+        <h2 class="font-semibold text-lg text-gray-800 leading-tight">
+            Dashboard Orang Tua
+        </h2>
+        <p class="text-xs text-gray-500 mt-1">
+            Halaman ini sudah disesuaikan untuk tampilan HP. Scroll ke bawah untuk melihat semua tagihan.
         </p>
+    </x-slot>
 
-        @if (session('status'))
-            <div class="mb-4 p-3 rounded bg-green-100 text-green-800 text-sm">
-                {{ session('status') }}
-            </div>
-        @endif
+    @php
+        // Nomor WA admin dari env
+        $adminWa = env('JET_ADMIN_WA'); // contoh: 6281234567890
+        $adminWaDigits = $adminWa ? preg_replace('/\D+/', '', $adminWa) : null;
+    @endphp
 
-        @if (session('error'))
-            <div class="mb-4 p-3 rounded bg-red-100 text-red-800 text-sm">
-                {{ session('error') }}
-            </div>
-        @endif
+    <div class="py-4">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
 
-        @if ($invoices->isEmpty())
-            <div class="p-4 border rounded bg-white text-sm">
-                Belum ada invoice yang terhubung dengan akun Anda.
+            {{-- Kartu sapaan singkat --}}
+            <div class="bg-white rounded-xl shadow-sm p-4">
+                <p class="text-sm text-gray-700">
+                    Halo, ini halaman dashboard parent JET. Kalau kamu melihat teks ini, berarti view sudah kepanggil.
+                </p>
             </div>
-        @else
-            <div class="space-y-4">
-                @foreach ($invoices as $invoice)
+
+            {{-- NOTIFIKASI JATUH TEMPO (LEWAT TEMPO) --}}
+            @if(($overdue ?? collect())->count() > 0)
+                <div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">
+                    <div class="font-semibold text-[13px] mb-1">
+                        ⚠️ Ada tagihan yang sudah lewat jatuh tempo
+                    </div>
+                    <ul class="list-disc pl-4 space-y-1">
+                        @foreach($overdue->take(3) as $inv)
+                            <li>
+                                Invoice {{ $inv->invoice_code ?? '-' }} –
+                                {{ $inv->student->name ?? 'Siswa' }} –
+                                Jatuh tempo:
+                                {{ optional($inv->due_date)->format('d-m-Y') }}
+                            </li>
+                        @endforeach
+                    </ul>
+                    @if($overdue->count() > 3)
+                        <p class="mt-1 text-[11px] text-red-700">
+                            Dan {{ $overdue->count() - 3 }} tagihan lainnya...
+                        </p>
+                    @endif
+                </div>
+            @endif
+
+            {{-- NOTIFIKASI AKAN JATUH TEMPO --}}
+            @if(($dueSoon ?? collect())->count() > 0)
+                <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                    <div class="font-semibold text-[13px] mb-1">
+                        🔔 Tagihan akan jatuh tempo dalam 7 hari
+                    </div>
+                    <ul class="list-disc pl-4 space-y-1">
+                        @foreach($dueSoon->take(3) as $inv)
+                            <li>
+                                Invoice {{ $inv->invoice_code ?? '-' }} –
+                                {{ $inv->student->name ?? 'Siswa' }} –
+                                Jatuh tempo:
+                                {{ optional($inv->due_date)->format('d-m-Y') }}
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            {{-- LIST INVOICE --}}
+            <div class="bg-white rounded-xl shadow-sm p-4">
+                <h3 class="text-sm font-semibold text-gray-900 mb-3">
+                    Daftar Invoice
+                </h3>
+
+                @forelse($invoices as $inv)
                     @php
-                        $total     = $invoice->total_amount ?? 0;
-                        $paid      = $invoice->paid_amount ?? 0;
+                        $total     = (int) ($inv->total_amount ?? 0);
+                        $paid      = (int) ($inv->paid_amount ?? 0);
                         $remaining = max(0, $total - $paid);
-                        $pendingExists = $invoice->payments->where('status', 'pending')->isNotEmpty();
                     @endphp
 
-                    <div class="p-4 border rounded bg-white shadow-sm">
-                        {{-- Banner aturan nominal --}}
-                        @if ($remaining <= 1_000_000 && $remaining > 0)
-                            <div class="mb-3 px-3 py-2 rounded bg-red-50 text-red-700 text-xs">
-                                Untuk sisa di bawah atau sama dengan Rp 1.000.000, wajib pelunasan penuh.
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-3 border-b last:border-b-0 text-xs">
+                        <div>
+                            {{-- Judul invoice bisa diklik --}}
+                            <a href="{{ $remaining > 0 ? route('sensipay.parent.invoices.show', $inv) : '#' }}"
+                               class="{{ $remaining > 0 ? 'text-emerald-700 hover:underline' : 'text-gray-800' }} font-semibold">
+                                {{ $inv->invoice_code ?? '-' }}
+                            </a>
+                            <div class="text-gray-500">
+                                {{ $inv->student->name ?? 'Siswa' }}
                             </div>
-                        @elseif ($remaining > 1_000_000)
-                            <div class="mb-3 px-3 py-2 rounded bg-amber-50 text-amber-700 text-xs">
-                                Sisa &gt; Rp 1.000.000: minimal pembayaran Rp 1.000.000 dan kelipatan Rp 50.000.
-                            </div>
-                        @endif
-
-                        {{-- Info kalau ada payment pending --}}
-                        @if ($pendingExists)
-                            <div class="mb-3 px-3 py-2 rounded bg-sky-50 text-sky-700 text-xs">
-                                Ada konfirmasi pembayaran yang masih menunggu verifikasi admin. Form pembayaran sementara dinonaktifkan.
-                            </div>
-                        @endif
-
-                        <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-2 gap-2">
-                            <div>
-                                <div class="text-xs text-gray-500">Kode Invoice</div>
-                                <div class="font-semibold text-lg">{{ $invoice->invoice_code }}</div>
-                            </div>
-                            <div class="text-right text-sm">
-                                <div class="text-xs text-gray-500">Status</div>
-                                <div class="font-semibold">
-                                    @if ($invoice->status === 'paid')
-                                        <span class="text-green-600">LUNAS</span>
-                                    @elseif ($invoice->status === 'partial')
-                                        <span class="text-yellow-600">ANGSUR</span>
-                                    @else
-                                        <span class="text-red-600">BELUM BAYAR</span>
-                                    @endif
-                                </div>
+                            <div class="text-[11px] text-gray-400">
+                                Jatuh tempo:
+                                {{ $inv->due_date ? \Carbon\Carbon::parse($inv->due_date)->format('d-m-Y') : '-' }}
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-3">
-                            <div>
-                                <div class="text-gray-500 text-xs">Nama Siswa</div>
-                                <div class="font-medium">
-                                    {{ optional($invoice->student)->name ?? '-' }}
-                                </div>
-                            </div>
-                            <div>
-                                <div class="text-gray-500 text-xs">Total Tagihan</div>
-                                <div class="font-medium">
+                        <div class="text-right">
+                            <div class="text-[11px] text-gray-500">
+                                Total:
+                                <span class="font-semibold text-gray-800">
                                     Rp {{ number_format($total, 0, ',', '.') }}
-                                </div>
+                                </span>
                             </div>
-                            <div>
-                                <div class="text-gray-500 text-xs">Sudah Dibayar</div>
-                                <div class="font-medium">
+                            <div class="text-[11px] text-gray-500">
+                                Terbayar:
+                                <span class="font-semibold text-emerald-700">
                                     Rp {{ number_format($paid, 0, ',', '.') }}
-                                </div>
+                                </span>
                             </div>
+
+                            @if($remaining > 0)
+                                <div class="mt-1 text-[11px] text-red-600">
+                                    Sisa:
+                                    <span class="font-semibold">
+                                        Rp {{ number_format($remaining, 0, ',', '.') }}
+                                    </span>
+                                </div>
+
+                                {{-- TOMBOL UTAMA PARENT --}}
+                                <a href="{{ route('sensipay.parent.invoices.show', $inv) }}"
+                                   class="mt-2 inline-flex w-full sm:w-auto items-center justify-center rounded-full bg-emerald-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-700">
+                                    Lihat Tagihan & Konfirmasi
+                                </a>
+                            @else
+                                <span class="mt-2 inline-block text-[11px] text-emerald-700 font-semibold">
+                                    Lunas
+                                </span>
+                            @endif
                         </div>
-
-                        <div class="mb-2 text-sm">
-                            <span class="text-gray-500">Sisa Tagihan:</span>
-                            <span class="font-semibold">
-                                Rp {{ number_format($remaining, 0, ',', '.') }}
-                            </span>
-                        </div>
-
-                        {{-- Riwayat pembayaran --}}
-                        @if ($invoice->payments->isNotEmpty())
-                            <div class="mt-3 mb-4">
-                                <div class="text-sm font-semibold mb-1">Riwayat Pembayaran:</div>
-                                <div class="overflow-x-auto">
-                                    <table class="min-w-full text-xs border">
-                                        <thead class="bg-gray-100">
-                                            <tr>
-                                                <th class="px-2 py-1 border text-left">Tanggal</th>
-                                                <th class="px-2 py-1 border text-right">Nominal</th>
-                                                <th class="px-2 py-1 border text-left">Metode</th>
-                                                <th class="px-2 py-1 border text-left">Status</th>
-                                                <th class="px-2 py-1 border text-left">Bukti</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach ($invoice->payments->sortByDesc('created_at') as $pay)
-                                                <tr>
-                                                    <td class="px-2 py-1 border">
-                                                        {{ optional($pay->paid_at)->format('d-m-Y H:i') ?? '-' }}
-                                                    </td>
-                                                    <td class="px-2 py-1 border text-right">
-                                                        Rp {{ number_format($pay->amount ?? 0, 0, ',', '.') }}
-                                                    </td>
-                                                    <td class="px-2 py-1 border">
-                                                        {{ $pay->method ?? '-' }}
-                                                    </td>
-                                                    <td class="px-2 py-1 border">
-                                                        @if ($pay->status === 'approved')
-                                                            <span class="text-green-600 font-semibold">APPROVED</span>
-                                                        @elseif ($pay->status === 'rejected')
-                                                            <span class="text-red-600 font-semibold">REJECTED</span>
-                                                        @else
-                                                            <span class="text-amber-600 font-semibold">PENDING</span>
-                                                        @endif
-                                                    </td>
-                                                    <td class="px-2 py-1 border">
-                                                        @if ($pay->proof_path)
-                                                            <a href="{{ asset('storage/' . $pay->proof_path) }}"
-                                                               target="_blank"
-                                                               class="text-blue-600 hover:underline">
-                                                                Lihat
-                                                            </a>
-                                                        @else
-                                                            <span class="text-[11px] text-slate-400">Tidak ada</span>
-                                                        @endif
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        @endif
-
-                        {{-- FORM BAYAR TAGIHAN BULAN INI + UPLOAD BUKTI --}}
-                        @if ($remaining > 0 && ! $pendingExists)
-                            <form method="POST"
-                                  action="{{ route('sensipay.parent.invoices.pay', $invoice) }}"
-                                  enctype="multipart/form-data"
-                                  class="mt-4 space-y-2 border-t pt-3">
-                                @csrf
-
-                                <div class="text-sm font-semibold">
-                                    Bayar Tagihan Bulan Ini
-                                </div>
-
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                                    <div>
-                                        <label class="block text-xs text-gray-500 mb-1">
-                                            Nominal Bayar (Rp)
-                                        </label>
-                                        <input type="number"
-                                               name="amount"
-                                               class="w-full border rounded px-2 py-1 text-right"
-                                               placeholder="contoh: 1000000">
-                                        <p class="text-[11px] text-gray-400 mt-1">
-                                            Sisa: Rp {{ number_format($remaining, 0, ',', '.') }}.<br>
-                                            Jika sisa &gt; Rp 1.000.000:
-                                            minimal Rp 1.000.000 dan kelipatan Rp 50.000.<br>
-                                            Jika sisa ≤ Rp 1.000.000: wajib pelunasan penuh.
-                                        </p>
-                                    </div>
-
-                                    <div class="md:col-span-2 space-y-2">
-                                        <div>
-                                            <label class="block text-xs text-gray-500 mb-1">
-                                                Catatan / No. Referensi Transfer (opsional)
-                                            </label>
-                                            <input type="text"
-                                                   name="note"
-                                                   class="w-full border rounded px-2 py-1"
-                                                   placeholder="contoh: BCA 24/11, Ref 123ABC">
-                                        </div>
-
-                                        <div>
-                                            <label class="block text-xs text-gray-500 mb-1">
-                                                Upload Bukti Transfer (opsional, jpg/png, max 2MB)
-                                            </label>
-                                            <input type="file"
-                                                   name="proof"
-                                                   accept="image/*"
-                                                   class="w-full border rounded px-2 py-1 bg-white">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="flex justify-end">
-                                    <button type="submit"
-                                            class="inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded bg-emerald-600 text-white hover:bg-emerald-700">
-                                        Kirim Konfirmasi Pembayaran
-                                    </button>
-                                </div>
-                            </form>
-                        @endif
                     </div>
-                @endforeach
+                @empty
+                    <p class="text-xs text-gray-500 py-3">
+                        Belum ada invoice yang terhubung dengan akun ini.
+                    </p>
+                @endforelse
             </div>
-        @endif
+
+        </div>
     </div>
-@endsection
+
+    {{-- FLOATING BUTTON WA ADMIN (pakai env JET_ADMIN_WA) --}}
+    @if($adminWaDigits)
+        @php
+            $defaultText = 'Halo Admin Bimbel JET, saya ingin menanyakan tagihan bimbel anak.';
+            $waUrl = 'https://wa.me/' . $adminWaDigits . '?text=' . urlencode($defaultText);
+        @endphp
+
+        <a href="{{ $waUrl }}"
+           target="_blank"
+           rel="noopener"
+           class="fixed bottom-5 right-4 z-40 inline-flex items-center rounded-full bg-emerald-600 px-4 py-2 shadow-lg text-xs font-semibold text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1">
+            <span class="mr-2 text-lg">🟢</span>
+            WA Admin JET
+        </a>
+    @endif
+</x-app-layout>

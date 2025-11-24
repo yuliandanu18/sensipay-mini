@@ -13,6 +13,8 @@ use App\Http\Controllers\Sensipay\ParentPaymentController;
 use App\Http\Controllers\Sensipay\PaymentApprovalController;
 use App\Http\Controllers\Sensipay\ParentDashboardController;
 
+
+
 // TEST: ping sensipay (tanpa middleware apa-apa)
 Route::get('/sensipay/ping', function () {
     return 'sensipay ok';
@@ -83,7 +85,6 @@ Route::middleware(['web', 'auth', 'role:owner,operational_director,academic_dire
         Route::delete('/parents/{parent}/invoices/{invoice}', [ParentManagementController::class, 'detachInvoice'])
             ->name('parents.detach-invoice');
     });
-
 // ==============================
 // PORTAL ORANG TUA
 // ==============================
@@ -92,9 +93,19 @@ Route::middleware(['web', 'auth', 'role:parent'])
     ->as('sensipay.parent.')
     ->group(function () {
 
-        Route::get('/dashboard', [ParentDashboardController::class, 'index'])
+       Route::get('/dashboard', [ParentDashboardController::class, 'index'])
             ->name('dashboard');
+
+        Route::get('/invoices/{invoice}', [ParentPaymentController::class, 'show'])
+            ->name('invoices.show');
 
         Route::post('/invoices/{invoice}/pay', [ParentPaymentController::class, 'store'])
             ->name('invoices.pay');
+            // ===== INVOICE & PEMBAYARAN INTERNAL =====
+Route::resource('invoices', InvoiceController::class);
+
+// Tambah ini persis di bawah resource invoices:
+Route::post('/invoices/{invoice}/recalc-status', [InvoiceController::class, 'recalcStatus'])
+    ->name('invoices.recalc-status');
+
     });

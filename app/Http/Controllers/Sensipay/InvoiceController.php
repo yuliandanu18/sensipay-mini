@@ -97,23 +97,68 @@ class InvoiceController extends Controller
 
         return view('sensipay.invoices.edit', compact('invoice', 'students', 'programs'));
     }
-
-    public function update(Request $request, Invoice $invoice)
-    {
-        $data = $request->validate([
-            'student_id'    => 'required|exists:students,id',
-            'program_id'    => 'required|exists:programs,id',
-            'total_amount'  => 'required|numeric|min:0',
-            'due_date'      => 'nullable|date',
-            'status'        => 'required|in:unpaid,partial,paid',
-        ]);
-
-        $invoice->update($data);
-
+public function update(Request $request, Invoice $invoice)
+{
+    // 1. Kalau invoice sudah lunas, jangan izinkan edit sama sekali
+    if ($invoice->is_paid) {
         return redirect()
             ->route('sensipay.invoices.show', $invoice)
-            ->with('success', 'Invoice updated');
+            ->with('error', 'Invoice ini sudah LUNAS dan dikunci. Jika perlu koreksi, lakukan lewat modul keuangan (bukan edit invoice langsung).');
     }
+
+    // 2. Validasi input
+    $data = $request->validate([
+        'student_id'    => 'required|exists:students,id',
+        'program_id'    => 'required|exists:programs,id',
+        'total_amount'  => 'required|numeric|min:0',
+        'due_date'      => 'nullable|date',
+        'status'        => 'required|in:unpaid,partial,paid',
+    ]);
+
+    $originalTotal = (float) ($invoice->total_amount ?? 0);
+    $paid          = (float) ($invoice->paid_amount ?? 0);
+    $newTotal      = (float) $data['total_amount'];
+
+    $warning = null;
+
+    // 3. Kalau sudah ada pembayaran, jaga-jaga:
+    if ($paid > 0) {
+        // a) Jangan sampai total baru lebih kecil dari yang sudah dibayar
+        if ($newTotal < $paid) {
+            return back()
+                ->withInput()
+                ->with('error', 'Total tagihan tidak boleh lebih kecil dari jumlah yang sudah dibayar (Rp ' . number_format($paid, 0, ',', '.') . ').');
+        }
+
+        // b) Kalau total diubah, kasih warning ke admin
+        if ($newTotal !== $originalTotal) {
+            $warning = 'Perhatian: Total tagihan diubah padahal sudah ada pembayaran. Pastikan perubahan ini sudah dikonfirmasi dengan orang tua.';
+        }
+    }
+
+    // 4. Update data
+    $invoice->update($data);
+
+    // 5. Kalau status manual nggak sinkron dengan paid_amount, biarkan dulu.
+    // Admin bisa pakai tombol "Recalc Status" untuk sinkron ulang.
+
+    $redirect = redirect()
+        ->route('sensipay.invoices.show', $invoice)
+        ->with('success', 'Invoice berhasil diperbarui.');
+
+    if ($warning) {
+        $redirect->with('warning', $warning);
+    }
+
+    return $redirect;
+}
+public function recalcStatus(Invoice $invoice)
+{
+    // Hitung ulang status berdasarkan total_amount & paid_amount
+    $invoice->recalcStatus();
+
+    return back()->with('success', 'Status invoice sudah disesuaikan dengan jumlah pembayaran (recalc status).');
+}
 
     public function destroy(Invoice $invoice)
     {
