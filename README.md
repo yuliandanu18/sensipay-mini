@@ -47,3 +47,11 @@ php artisan migrate
   - tipe pembayaran (cash/angsuran/QRIS)
   - *auto reminder* WA lewat Fonnte
   - integrasi Sensijet / JurnalJet
+
+
+## Dummy Test Data (Sensipay DEV)
+
+Untuk keperluan development & testing alur Sensipay (parent → pengajuan → admin approval), tersedia 1 perintah Artisan:
+
+```bash
+php artisan sensipay:seed-dummy

@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
+
 class ParentManagementController extends Controller
 {
     public function index()

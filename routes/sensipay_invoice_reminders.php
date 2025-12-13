@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Sensipay\InvoiceReminderController;
+// use App\Http\Controllers\Sensipay\InvoiceReminderController;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,6 +18,6 @@ Route::middleware(['web', 'auth', 'role:owner,operational_director,academic_dire
     ->prefix('sensipay/admin')
     ->as('sensipay.admin.')
     ->group(function () {
-        Route::get('invoice-reminders', [InvoiceReminderController::class, 'index'])
-            ->name('invoice-reminders.index');
+        // Route::get('invoice-reminders', [InvoiceReminderController::class, 'index'])
+        //     ->name('invoice-reminders.index');
     });

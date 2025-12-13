@@ -1,0 +1,110 @@
+<?php
+
+namespace App\Services\Sensipay;
+
+use App\Models\Invoice;
+use App\Models\WaReminder;
+use App\Services\Whatsapp\WhatsappCloudApiService;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+
+class InvoiceReminderService
+{
+    public function __construct(
+        protected WhatsappCloudApiService $whatsapp
+    ) {}
+
+    /**
+     * Kirim reminder untuk satu invoice via WhatsApp Cloud API.
+     */
+    public function sendForInvoice(Invoice $invoice): void
+    {
+        $parent = $invoice->parent ?? null;
+
+        if (! $parent) {
+            throw new \RuntimeException('Relasi parent() null. Cek parent_user_id & model ParentModel.');
+        }
+
+        if (! ($parent->whatsapp_number ?? null)) {
+            throw new \RuntimeException('whatsapp_number di parent kosong. Isi nomor WA orang tua dulu.');
+        }
+
+        $dueDate = optional($invoice->due_date)->format('d-m-Y');
+        $student = $invoice->student->name ?? '-';
+        $amount  = number_format($invoice->total_amount, 0, ',', '.');
+
+        $message = "Assalamualaikum Ayah/Bunda {$parent->name}\n\n"
+            . "Ini pengingat tagihan Bimbel JET untuk:\n"
+            . "Siswa : {$student}\n"
+            . "Jatuh tempo : {$dueDate}\n"
+            . "Jumlah : Rp {$amount}\n\n"
+            . "Mohon kesediaannya untuk melakukan pembayaran.\n"
+            . "Terima kasih. 🙏";
+
+        $reference = 'INV-' . $invoice->id . '-' . Str::uuid();
+
+        $log = WaReminder::create([
+            'invoice_id' => $invoice->id,
+            'parent_id'  => $parent->id ?? null,
+            'target'     => $parent->whatsapp_number,
+            'message'    => $message,
+            'status'     => 'sent',
+            'provider'   => 'wa_cloud',
+            'reference'  => $reference,
+            'sent_at'    => now(),
+        ]);
+
+        try {
+            // Skenario paling simpel: kirim teks biasa.
+            $response = $this->whatsapp->sendText($parent->whatsapp_number, $message);
+
+            $log->last_payload        = $response;
+            $log->provider_message_id = $response['messages'][0]['id'] ?? null;
+            $log->save();
+
+            if ($invoice->isFillable('last_reminder_sent_at')) {
+                $invoice->last_reminder_sent_at = now();
+                $invoice->save();
+            }
+        } catch (\Throwable $e) {
+            $log->status    = 'failed';
+            $log->failed_at = now();
+            $log->save();
+
+            Log::error('Exception kirim WA Cloud API reminder', [
+                'invoice_id' => $invoice->id ?? null,
+                'error'      => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Kirim reminder untuk semua invoice jatuh tempo.
+     */
+    public function sendForDueInvoices(): int
+    {
+        $query = Invoice::query()
+            ->whereDate('due_date', '<=', now()->toDateString())
+            ->whereIn('status', ['unpaid', 'partial']);
+
+        $sent = 0;
+
+        $query->chunk(50, function ($invoices) use (&$sent) {
+            foreach ($invoices as $invoice) {
+                try {
+                    $this->sendForInvoice($invoice);
+                    $sent++;
+                } catch (\Throwable $e) {
+                    Log::warning('Lewati invoice gagal reminder (WA Cloud)', [
+                        'invoice_id' => $invoice->id,
+                        'error'      => $e->getMessage(),
+                    ]);
+                }
+            }
+        });
+
+        return $sent;
+    }
+}

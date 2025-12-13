@@ -13,17 +13,29 @@ return [
     | a conventional file to locate the various service credentials.
     |
     */
+    'fonnte' => [
+    'token'        => env('FONNTE_TOKEN'),
+    'url'          => env('FONNTE_URL', 'https://api.fonnte.com/send'),
+    'admin_number' => env('FONNTE_ADMIN_NUMBER'),
+],
+
+//     'whatsapp' => [
+//     'token'      => env('WHATSAPP_CLOUD_API_TOKEN'),
+//     'phone_id'   => env('WHATSAPP_CLOUD_API_PHONE_ID'),
+//     'version'    => env('WHATSAPP_CLOUD_API_VERSION', 'v22.0'),
+// ],
+
     'jet' => [
     'admin_wa'      => env('JET_ADMIN_WA'),
     'admin_wa_text' => env('JET_ADMIN_WA_TEXT', 'Halo admin Bimbel JET, saya ingin menanyakan tagihan.'),
 ],
 
-    'fonnte' => [
-        'token'         => env('FONNTE_TOKEN'),
-        'url'           => env('FONNTE_URL', 'https://api.fonnte.com/send'),
-        'default_sender'=> env('FONNTE_DEFAULT_SENDER', null),
-        'admin_number'  => env('JET_ADMIN_WA'),
-    ],
+    // 'fonnte' => [
+    //     'token'         => env('FONNTE_TOKEN'),
+    //     'url'           => env('FONNTE_URL', 'https://api.fonnte.com/send'),
+    //     'default_sender'=> env('FONNTE_DEFAULT_SENDER', null),
+    //     'admin_number'  => env('JET_ADMIN_WA'),
+    // ],
 
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
