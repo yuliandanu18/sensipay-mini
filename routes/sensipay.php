@@ -107,6 +107,8 @@
 
             Route::delete('/parents/{parent}/invoices/{invoice}', [ParentManagementController::class, 'detachInvoice'])
                 ->name('parents.detach-invoice');
+       
+
                   // ===== PAYMENT PROOF MANAGEMENT =====
                 
                 Route::get('payment-proofs', [AdminPaymentProofController::class, 'index'])
@@ -126,27 +128,35 @@
     // PORTAL ORANG TUA
     // ==============================
     Route::middleware(['web', 'auth', 'role:parent'])
-        ->prefix('sensipay/parent')
-        ->as('sensipay.parent.')
-        ->group(function () {
+    ->prefix('sensipay/parent')
+    ->as('sensipay.parent.')
+    ->group(function () {
 
-            // Dashboard ringkasan tagihan
-            Route::get('/dashboard', [ParentDashboardController::class, 'index'])
-                ->name('dashboard');
+        Route::get('/dashboard', [ParentDashboardController::class, 'index'])
+            ->name('dashboard');
 
-            // Detail 1 invoice untuk orang tua
-            Route::get('/invoices/{invoice}', [ParentPaymentController::class, 'show'])
-                ->name('invoices.show');
+        // ✅ LIST semua invoice parent
+        Route::get('/invoices', [ParentPaymentController::class, 'index'])
+            ->name('invoices.index');
 
-            // Ortu mengajukan pembayaran / upload bukti
-            Route::post('/invoices/{invoice}/pay', [ParentPaymentController::class, 'store'])
-                ->name('invoices.pay');
+                // ✅ HISTORY bukti bayar (global)
+        Route::get('/payment-proofs', [ParentPaymentProofController::class, 'index'])
+            ->name('payment-proofs.index');
 
-                // Ortu mengajukan pembayaran / upload bukti {PROF WHATSAPP}
-Route::get('invoices/{invoice}/upload-proof', [ParentPaymentProofController::class, 'create'])
+
+        Route::get('/invoices/{invoice}', [ParentPaymentController::class, 'show'])
+            ->name('invoices.show');
+
+        Route::post('/invoices/{invoice}/pay', [ParentPaymentController::class, 'store'])
+            ->name('invoices.pay');
+
+        Route::get('invoices/{invoice}/upload-proof', [ParentPaymentProofController::class, 'create'])
             ->name('invoices.upload-proof');
 
         Route::post('invoices/{invoice}/upload-proof', [ParentPaymentProofController::class, 'store'])
             ->name('invoices.upload-proof.store');
-            // (Kalau nanti mau: route riwayat pengajuan, dll, bisa ditambah di sini)
-        });
+                 Route::get('/payments', [\App\Http\Controllers\Sensipay\ParentPaymentHistoryController::class, 'index'])
+    ->name('payments.index');
+
+    
+    });

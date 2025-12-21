@@ -6,6 +6,7 @@
         </h2>
         <p class="text-xs text-gray-500 mt-1">
             Halaman ini sudah disesuaikan untuk tampilan HP. Scroll ke bawah untuk melihat semua tagihan.
+            
         </p>
     </x-slot>
 
@@ -23,6 +24,9 @@
                 <p class="text-sm text-gray-700">
                     Halo, ini halaman dashboard parent JET. Kalau kamu melihat teks ini, berarti view sudah kepanggil.
                 </p>
+               <p> <a href="{{ route('sensipay.parent.payments.index') }}"
+                                     class="mt-2 inline-flex w-full sm:w-auto items-center justify-center rounded-full bg-emerald-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-700">Riwayat Pembayaran</a></p>
+
             </div>
 
             {{-- NOTIFIKASI JATUH TEMPO (LEWAT TEMPO) --}}
@@ -124,6 +128,7 @@
                                    class="mt-2 inline-flex w-full sm:w-auto items-center justify-center rounded-full bg-emerald-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-700">
                                     Lihat Tagihan & Konfirmasi
                                 </a>
+                                     
                             @else
                                 <span class="mt-2 inline-block text-[11px] text-emerald-700 font-semibold">
                                     Lunas
